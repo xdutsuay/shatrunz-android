@@ -1,0 +1,92 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.python-version
+data/training_runs/
+.venv/
+
+# Build artifacts
+dist/
+engine/*.o
+engine/shatrunz_engine
+engine/shatrunz_engine_c
+
+# Rust
+/target/
+crates/*/target/
+frontend/pkg/
+frontend/pkg-node/
+
+# Runtime data
+data/
+
+# Trained ML artifacts (metrics JSON is tracked)
+models/*.pt
+models/*.onnx
+
+# Generated knowledge graph
+graphify-out/
+
+# Local NVIDIA API worker (API key via Cursor Settings; not part of repo)
+nvidia_worker/
+
+# Local agent logs
+hermes-logs/
+
+# Local / IDE
+.cursor/
+!.cursor/
+.cursor/*
+!.cursor/agents/
+!.cursor/agents/*.md
+!.cursor/commands/
+!.cursor/commands/*.md
+.venv-regression/
+models/train_report_*.json
+models/train_report_*.md
+
+# Android / Gradle outputs
+**/.gradle/
+android/.gradle-home*/
+android/local.properties
+android/build/
+android/app/build/
+android/app/src/main/assets/www/
+
+# Local build toolchains kept out of the repository
+.tooling/
+
+# Desktop/server source from the upstream snapshot is not part of this Android repo.
+/.agent/
+/.idea/
+/.gitmodules
+/archive/
+/backend/
+/engine/
+/ml/
+/models/
+/tests/
+/crates/shatrunz-engine/
+/crates/shatrunz-server/
+/Dockerfile
+/docker-compose.yml
+/Makefile
+/pytest.ini
+/requirements*.txt
+/start.py
+/start.sh
+/scripts/build_engine.sh
+/scripts/build_fairy_stockfish.sh
+/scripts/build_stockfish.sh
+/scripts/nvidia_next_step.sh
+/scripts/package_release.sh
+/scripts/run_selfplay.sh
+/scripts/run_with_fairy_stockfish.sh
+/scripts/train_10min.sh
+/scripts/train_benchmark_30m.py
+/scripts/train_one.sh
+/scripts/watch_tests.py
+

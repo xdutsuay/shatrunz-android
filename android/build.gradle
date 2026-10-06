@@ -1,0 +1,24 @@
+plugins {
+    id 'com.android.application' version '8.13.2' apply false
+}
+
+def repositoryRoot = rootProject.projectDir.parentFile
+
+tasks.register('buildShatrunzWasm', Exec) {
+    workingDir repositoryRoot
+    def wasmPackExecutable = System.getenv('WASM_PACK') ?: 'wasm-pack'
+    commandLine wasmPackExecutable, 'build', 'crates/shatrunz-wasm', '--target', 'web',
+            '--release', '--no-opt', '--out-dir', '../../frontend/pkg'
+}
+
+tasks.register('syncWebAssets', Sync) {
+    dependsOn tasks.named('buildShatrunzWasm')
+    from new File(repositoryRoot, 'frontend')
+    into new File(project(':app').projectDir, 'src/main/assets/www')
+}
+
+project(':app').plugins.withId('com.android.application') {
+    project(':app').tasks.named('preBuild').configure {
+        dependsOn rootProject.tasks.named('syncWebAssets')
+    }
+}

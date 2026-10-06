@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ShatrunZ — Admin</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body class="admin-page">
+    <div class="admin-shell">
+        <header class="admin-header">
+            <h1>ShatrunZ <span class="version">Admin</span></h1>
+            <nav class="mode-nav" aria-label="Admin navigation">
+                <a href="/" class="mode-nav-link">Home</a>
+                <a href="/pvai" class="mode-nav-link">Play</a>
+            </nav>
+        </header>
+
+        <div class="admin-tabs" role="tablist">
+            <button type="button" class="admin-tab active" data-tab="settings" role="tab">Settings</button>
+            <button type="button" class="admin-tab" data-tab="stats" role="tab">Stats</button>
+            <button type="button" class="admin-tab" data-tab="training" role="tab">Training</button>
+        </div>
+
+        <div id="tab-settings" class="admin-panel active" role="tabpanel">
+            <div class="control-group">
+                <label>AI Level <span id="ai-level-label" class="badge">3</span></label>
+                <input id="ai-level" type="range" min="1" max="5" value="3">
+            </div>
+
+            <div class="control-group">
+                <label>PvAI engine persona</label>
+                <select id="engine-persona">
+                    <option value="material">JS Material</option>
+                    <option value="positional">JS Positional</option>
+                    <option value="aggressive">JS Aggressive</option>
+                    <option value="c_native">C Engine (native)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="add-randomness">
+                    Exploration noise (training)
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="enable-ai-help">
+                    Enable AI help (human suggestions)
+                </label>
+                <label class="help-sub">
+                    <input type="checkbox" id="enable-ai-auto-help">
+                    AI may ask for help (auto-pause)
+                </label>
+                <div class="help-signal-toggles">
+                    <label><input type="checkbox" id="help-signal-eval" checked> Eval swing</label>
+                    <label><input type="checkbox" id="help-signal-margin" checked> Low margin</label>
+                    <label><input type="checkbox" id="help-signal-unknown" checked> Unknown position</label>
+                    <label><input type="checkbox" id="help-signal-repeat" checked> Repetition risk</label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="enable-move-explain">
+                    Experimental: explain AI moves
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="use-policy-net">
+                    Use policy net (JS AI, experimental)
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="admin-allow-midgame-persona">
+                    Allow mid-game persona changes (AIvAI)
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="admin-enable-clocks">
+                    Enable clocks
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>Total time (minutes)</label>
+                <input id="admin-clock-total-min" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="control-group">
+                <label>Increment (seconds)</label>
+                <input id="admin-clock-increment-sec" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="control-group">
+                <label>Think time when clocks off (ms)</label>
+                <input id="admin-think-time-ms" type="number" min="0" step="100" value="0">
+            </div>
+
+            <button id="admin-save" class="btn primary full-width">Save settings</button>
+        </div>
+
+        <div id="tab-stats" class="admin-panel" role="tabpanel" hidden>
+            <div class="panel-section">
+                <h3>Persona wins / losses / draws</h3>
+                <canvas id="admin-persona-chart" class="stats-chart" width="480" height="220" aria-label="Persona stats chart"></canvas>
+            </div>
+            <div class="panel-section">
+                <h3>Persona stats (local)</h3>
+                <div id="admin-persona-stats" class="move-list">Loading…</div>
+            </div>
+            <div class="panel-section">
+                <h3>Server stats</h3>
+                <div id="admin-api-stats" class="move-list">Loading…</div>
+            </div>
+            <div class="panel-section">
+                <h3>Game inspector</h3>
+                <p class="help-text">On-demand analysis (Cursor SDK if CURSOR_API_KEY set; else heuristics). Reports in terminal and data/logs/.</p>
+                <button id="btn-inspector-last" class="btn secondary full-width">Analyze last saved game (AI)</button>
+                <button id="btn-inspector-bulk" class="btn secondary full-width">Bulk analyze all saved games</button>
+            </div>
+        </div>
+
+        <div id="tab-training" class="admin-panel" role="tabpanel" hidden>
+            <div class="control-group">
+                <label>Hyper-train games</label>
+                <input id="hyper-games-count" type="number" min="1" max="500" value="50">
+            </div>
+            <div class="control-group">
+                <label>Strategies in rotation</label>
+                <div class="checkbox-row">
+                    <label><input type="checkbox" class="hyper-strategy" value="material" checked> Material</label>
+                    <label><input type="checkbox" class="hyper-strategy" value="positional" checked> Positional</label>
+                    <label><input type="checkbox" class="hyper-strategy" value="aggressive" checked> Aggressive</label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="hyper-swap-colors" checked>
+                    Swap colors every N games
+                </label>
+                <input id="hyper-swap-interval" type="number" min="1" max="50" value="5">
+            </div>
+            <button id="btn-hyper-train" class="btn warning full-width">⚡ Hyper-Train</button>
+
+            <div class="panel-section">
+                <h3>Policy net (server retrain)</h3>
+                <p class="help-text">Trains the policy/value net from the SQLite game store
+                    (export → behavior-cloning). Runs on the server; progress streams live below.</p>
+                <div class="control-group">
+                    <label>Epochs</label>
+                    <input id="policy-epochs" type="number" min="1" max="50" value="3">
+                </div>
+                <div class="control-group">
+                    <label>Max games <span class="help-sub">(replay is O(n); large runs take minutes)</span></label>
+                    <input id="policy-max-games" type="number" min="5" max="100000" value="50">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="policy-only-decisive">
+                        Only decisive games (drop draws/unfinished)
+                    </label>
+                </div>
+                <button id="btn-policy-train" class="btn primary full-width">🧠 Retrain policy net</button>
+                <pre id="policy-train-log" class="ml-metrics-panel" style="max-height:220px;overflow:auto"></pre>
+            </div>
+
+            <div class="panel-section">
+                <h3>Game database</h3>
+                <pre id="admin-db-stats" class="ml-metrics-panel">Loading…</pre>
+            </div>
+
+            <div class="panel-section">
+                <h3>Training runs</h3>
+                <div id="admin-training-runs" class="move-list">Loading…</div>
+            </div>
+
+            <div class="panel-section">
+                <h3>ML policy metrics</h3>
+                <pre id="ml-metrics-panel" class="ml-metrics-panel">Loading…</pre>
+            </div>
+
+            <div class="brain-controls">
+                <button id="export-brain" class="btn text-only">Export Brain</button>
+                <button id="import-brain" class="btn text-only">Import Brain</button>
+                <button id="reset-brain" class="btn text-only">Reset all persona brains</button>
+                <input type="file" id="brain-file" accept=".json" style="display:none">
+            </div>
+
+            <div class="panel-section settings-history">
+                <div class="section-header">
+                    <h3>Game History</h3>
+                    <button id="clear-history" class="btn-icon" title="Clear History">🗑️</button>
+                </div>
+                <select id="game-history" size="6" class="history-select"></select>
+                <button id="load-game" class="btn secondary small full-width">Load / Replay</button>
+                <div id="replay-controls" class="replay-controls" style="display:none">
+                    <button id="replay-start" class="btn secondary small" title="Start">⏮</button>
+                    <button id="replay-back" class="btn secondary small" title="Step back">◀</button>
+                    <button id="replay-forward" class="btn secondary small" title="Step forward">▶</button>
+                    <button id="replay-end" class="btn secondary small" title="End">⏭</button>
+                    <span id="replay-ply-label" class="replay-ply-label">0 / 0</span>
+                </div>
+                <button id="import-pgn" class="btn secondary small full-width">Import PGN file</button>
+                <input type="file" id="pgn-file" accept=".pgn,.txt" style="display:none">
+            </div>
+        </div>
+
+        <div id="admin-status" class="admin-status">Ready.</div>
+    </div>
+
+    <div id="training-overlay">
+        <div class="overlay-content">
+            <h2>🧠 Hyper-Training...</h2>
+            <div id="train-status">Simulating…</div>
+            <div class="progress-container">
+                <div id="train-progress" class="progress-bar"></div>
+            </div>
+            <button id="cancel-train" class="btn danger">Cancel</button>
+        </div>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+</body>
+
+</html>
+

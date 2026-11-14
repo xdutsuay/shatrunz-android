@@ -44,3 +44,11 @@ test('shouldBlockHumanInput blocks correctly (core regression: HvC blocks only o
     assert.equal(shouldBlockHumanInput({ mode: MODES.HVH, gameOver: true, autoRunning: false, isTraining: false, turn: COLORS.WHITE, computerSideValue: 'white' }), true);
 });
 
+
+test('strength change is deferred only mid-game in AI vs AI', async () => {
+    const { shouldDeferLevelChange, MODES } = await import('../frontend/mode_logic.js');
+    assert.equal(shouldDeferLevelChange({ mode: MODES.CVC, allowMidgame: false, gameInProgress: true }), true);
+    assert.equal(shouldDeferLevelChange({ mode: MODES.CVC, allowMidgame: true, gameInProgress: true }), false);
+    assert.equal(shouldDeferLevelChange({ mode: MODES.CVC, allowMidgame: false, gameInProgress: false }), false);
+    assert.equal(shouldDeferLevelChange({ mode: MODES.HVC, allowMidgame: false, gameInProgress: true }), false);
+});

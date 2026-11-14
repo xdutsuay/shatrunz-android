@@ -2,7 +2,7 @@ import { COLORS } from './constants.js';
 import { Rules } from './rules.js';
 import { AIPlayer } from './ai.js';
 import { PGNManager } from './pgn.js';
-import { MODES, isAiTurn as isAiTurnFor } from './mode_logic.js';
+import { MODES, isAiTurn as isAiTurnFor, shouldDeferLevelChange } from './mode_logic.js';
 import { GameSession } from './shared/game_session.js';
 import { BoardView } from './shared/board_view.js';
 import { brainNameFor } from './shared/brain_utils.js';
@@ -229,7 +229,13 @@ function aiLevel() {
     return getSettings().aiLevel || 3;
 }
 
+function setLevelHint(text) {
+    const hint = document.getElementById('ai-level-hint');
+    if (hint) hint.textContent = text;
+}
+
 function rebuildAivaiPlayers() {
+    setLevelHint('');
     const level = aiLevel();
     const s1 = strategyFromSelect('white');
     const s2 = strategyFromSelect('black');
@@ -730,17 +736,21 @@ function handleLevelChange(e) {
     const level = parseInt(e?.target?.value ?? aiLevel(), 10);
     setNum(SettingsKeys.aiLevel, level);
 
-    const allowMidgame = getSettings().allowMidgamePersonaChange;
-    const inProgress = currentMode === MODES.CVC && !replayController && session.uciMoveHistory.length > 0 && !getGame().gameOver;
-    if (!allowMidgame && inProgress && e?.target) {
-        e.target.value = String(ai1.level);
-        const lbl = document.getElementById('ai-level-label');
-        if (lbl) lbl.innerText = ai1.level;
-        return;
-    }
-
     const lbl = document.getElementById('ai-level-label');
     if (lbl) lbl.innerText = level;
+
+    // Previously the slider silently snapped back here, yet the new level
+    // was already saved above and quietly applied at the next New Game.
+    // Keep the user's choice visible and say when it takes effect instead.
+    if (shouldDeferLevelChange({
+        mode: currentMode,
+        allowMidgame: getSettings().allowMidgamePersonaChange,
+        gameInProgress: !replayController && session.uciMoveHistory.length > 0 && !getGame().gameOver,
+    })) {
+        setLevelHint(`Strength ${level} applies from the next game (now ${ai1.level}).`);
+        return;
+    }
+    setLevelHint('');
     if (currentMode === MODES.CVC) rebuildAivaiPlayers();
     else if (currentMode === MODES.HVC) rebuildPvaiPlayer();
     refreshUiLocal();

@@ -219,7 +219,7 @@ pub fn search_timed(
         return search(pos, if max_depth > 0 { max_depth } else { 5 }, randomness);
     }
 
-    let start = std::time::Instant::now();
+    let start = web_time::Instant::now();
     let mut limit_sec = (time_ms as f64 / 1000.0) * 0.9;
     if limit_sec < 0.01 {
         limit_sec = 0.01;

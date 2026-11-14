@@ -25,7 +25,7 @@
 //!   into `get_best_move` as `root_bonus`, added exactly where JS adds it
 //!   (root moves only, after the recursive search score is known).
 
-use std::time::Instant;
+use web_time::Instant;
 
 use crate::board::Board;
 use crate::eval::hce::{evaluate_for_search, Persona};

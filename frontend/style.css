@@ -1350,3 +1350,19 @@ body.android-board-green .square.dark { background: #769656; }
     to { opacity: 1; transform: translate(-50%, -50%); }
 }
 @media (prefers-reduced-motion: reduce) { .game-over-card { animation: none; } }
+
+/* Captured pieces + material lead under each player's name. */
+.captured-row {
+    width: 100%;
+    min-height: 1.3em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1rem;
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.85);
+}
+.captured-row:empty { display: none; }
+.captured-pieces { letter-spacing: -0.12em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.captured-lead { font-size: 0.75rem; font-weight: 650; color: #a8c686; font-variant-numeric: tabular-nums; }
+body.android-mvp .captured-row { margin: 0 0 2px; }

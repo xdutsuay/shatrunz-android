@@ -67,7 +67,49 @@ pub struct SearchConfig {
 
 fn evaluate_with_randomness(board: &Board, turn: Color, cfg: &SearchConfig) -> f64 {
     let _ = cfg.add_randomness; // see module doc: not implemented
-    evaluate_for_search(board, turn, cfg.persona) as f64 + mop_up(board, turn)
+    let base = evaluate_for_search(board, turn, cfg.persona) as f64 + mop_up(board, turn);
+    if cfg.mode == SearchMode::Full {
+        base + tapered_king(board, turn)
+    } else {
+        base
+    }
+}
+
+/// Tapered king placement (side-to-move POV). In the middlegame a king
+/// belongs at home behind its pawns; in the endgame it's a fighting piece
+/// and belongs in the centre. Blend the two by game phase (non-pawn
+/// material left) instead of switching at a hard threshold, so the score
+/// never jumps when one piece is traded.
+/// https://www.chessprogramming.org/Tapered_Eval
+pub fn tapered_king(board: &Board, turn: Color) -> f64 {
+    use crate::board::BOARD_SIZE;
+    use crate::piece::PieceKind;
+    // Start: 2R + 2N + 2B + Q per side = 2*(500+320+330)+900 = 3200; x2 sides.
+    const START_PHASE: f64 = 6400.0;
+    let mut phase_material = 0i32;
+    let mut kings = [None; 2];
+    for r in 0..BOARD_SIZE {
+        for c in 0..BOARD_SIZE {
+            if let Some(p) = board.get(r, c) {
+                match p.kind {
+                    PieceKind::King => kings[if p.color == Color::White { 0 } else { 1 }] = Some((r, c)),
+                    PieceKind::Pawn | PieceKind::Krishna => {}
+                    k => phase_material += k.weight(),
+                }
+            }
+        }
+    }
+    let mg = (phase_material as f64 / START_PHASE).min(1.0);
+    let eg = 1.0 - mg;
+    let term = |pos: Option<(usize, usize)>, color: Color| -> f64 {
+        let Some((r, c)) = pos else { return 0.0 };
+        let home = if color == Color::White { BOARD_SIZE - 1 } else { 0 };
+        let advance = r.abs_diff(home) as f64; // ranks away from home
+        let centre = (r.abs_diff(4) + c.abs_diff(4)) as f64; // 0 at e5, 8 in a corner
+        mg * (-12.0 * advance) + eg * (8.0 * (4.0 - centre))
+    };
+    let white = term(kings[0], Color::White) - term(kings[1], Color::Black);
+    if turn == Color::White { white } else { -white }
 }
 
 /// "Mop-up" guidance for K + major piece(s) vs a lone king (Krishna aside:

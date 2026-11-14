@@ -1,5 +1,6 @@
 import { BOARD_SIZE, FILES, PIECES, SYMBOLS } from '../constants.js';
 import { Rules } from '../rules.js';
+import { DrawerKeys, drawerToggle } from './settings_drawer.js';
 
 export class BoardView {
     constructor({ boardEl, getGame, getSelection, onSquareClick, isTraining, isFlipped = () => false }) {
@@ -109,6 +110,7 @@ export class BoardView {
         if (prev === null || plies !== prev + 1) return;
         if (typeof window === 'undefined' || !window.matchMedia) return;
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (!drawerToggle(DrawerKeys.animations)) return;
         const last = game.moveHistory[plies - 1];
         if (!last) return;
         const idx = (r, c) => (flipped ? BOARD_SIZE - 1 - r : r) * BOARD_SIZE + (flipped ? BOARD_SIZE - 1 - c : c);

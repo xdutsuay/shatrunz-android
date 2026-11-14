@@ -38,6 +38,7 @@
                         <option value="classic">Wood</option>
                         <option value="green">Green</option>
                     </select>
+                    <button id="settings-open" class="btn-icon" type="button" title="Settings" aria-label="Settings" aria-controls="settings-drawer" aria-expanded="false">⚙</button>
                     <button id="board-flip" class="btn-icon" type="button" title="Rotate board" aria-label="Rotate board" aria-pressed="false">↻</button>
                 </div>
             </div>
@@ -150,6 +151,34 @@
     </div>
 
     <script type="module" src="main.js"></script>
+    <div id="settings-scrim" class="settings-scrim" hidden></div>
+    <aside id="settings-drawer" class="settings-drawer" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
+        <div class="settings-head">
+            <h2 id="settings-title">Settings</h2>
+            <button id="settings-close" class="btn-icon" type="button" aria-label="Close settings">✕</button>
+        </div>
+        <section>
+            <h3>AI</h3>
+            <label for="drawer-ai-level">Strength <output id="drawer-ai-level-label">3</output></label>
+            <input id="drawer-ai-level" type="range" min="1" max="6" step="1" value="3">
+            <label for="drawer-think-time">Think time per move</label>
+            <select id="drawer-think-time"></select>
+            <p class="settings-note">Strength and think time apply from the AI's next move (strength mid-game: next game).</p>
+        </section>
+        <section>
+            <h3>Board</h3>
+            <label for="drawer-theme">Theme</label>
+            <select id="drawer-theme"><option value="classic">Wood</option><option value="green">Green</option></select>
+            <button id="drawer-flip" class="btn secondary" type="button" aria-pressed="false">Rotate board</button>
+            <label class="settings-toggle"><input id="drawer-animations" type="checkbox"> Animate moves</label>
+            <p class="settings-note">Moves never animate when your phone asks for reduced motion.</p>
+        </section>
+        <section>
+            <h3>Show</h3>
+            <label class="settings-toggle"><input id="drawer-engine-line" type="checkbox"> Engine line (score, depth, best move)</label>
+            <label class="settings-toggle"><input id="drawer-captured" type="checkbox"> Captured pieces</label>
+        </section>
+    </aside>
 </body>
 
 </html>

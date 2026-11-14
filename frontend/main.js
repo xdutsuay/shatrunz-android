@@ -48,6 +48,8 @@ async function boot() {
     // until the shared Rust/WASM rules engine is ready.
     const { initUI } = await import('./ui.js');
     initUI(mode);
+    const { initSettingsDrawer } = await import('./shared/settings_drawer.js');
+    initSettingsDrawer();
 }
 
 boot().catch((err) => {

@@ -438,6 +438,21 @@ function setupEventListeners() {
     });
 
     document.getElementById('export-pgn')?.addEventListener('click', () => pgnManager.exportCurrentGame());
+    // #32: animated GIF of the game so far (live game, or the replay being viewed).
+    document.getElementById('export-gif')?.addEventListener('click', async (ev) => {
+        const btn = ev.currentTarget;
+        const moves = replayController ? replayController.uciMoves : session.uciMoveHistory;
+        const startFen = replayController ? replayController.startFen : session.game.startFen;
+        btn.disabled = true;
+        try {
+            const { shareGameGif } = await import('./shared/gif_export.js');
+            shareGameGif([...moves], { startFen, flipped: boardFlipped });
+        } catch (e) {
+            alert(`Couldn't make the GIF: ${e?.message || e}`);
+        } finally {
+            btn.disabled = false;
+        }
+    });
 
     document.getElementById('nav-start')?.addEventListener('click', () => liveNavTo(0));
     document.getElementById('nav-back')?.addEventListener('click', () => liveNavTo(currentNavPly() - 1));

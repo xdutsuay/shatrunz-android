@@ -7,7 +7,10 @@ let ready = null;
 async function ensureWasm() {
     if (ready) return ready;
     ready = (async () => {
-        const m = await import('/pkg/shatrunz_wasm.js');
+        // Resolve beside this worker, not from the site root: the Android
+        // WebView serves the app from /assets/www/, where '/pkg/...' is
+        // blocked, which silently pushed every search onto the UI thread.
+        const m = await import(new URL('../pkg/shatrunz_wasm.js', import.meta.url).href);
         if (typeof m.default === 'function') {
             await m.default();
         }

@@ -15,11 +15,36 @@ function uciToSan(uci) {
     return cap ? `x${toSq}` : toSq;
 }
 
-function formatPvLine(evt) {
-    const cp = evt.cp != null ? formatEvalPawns(evt.cp) : '—';
-    const depth = evt.depth != null ? `d${evt.depth}` : '';
+// Search scores at or beyond this are "a forced mate was found" (the Rust
+// search returns MATE_SCORE = 100000 plus remaining depth), not material.
+const MATE_THRESHOLD = 50000;
+
+/** Score from the thinking side's point of view: "+1.3", or "#+" / "#-" for a found mate. */
+export function formatEngineScore(cp) {
+    if (cp == null || Number.isNaN(cp)) return '—';
+    if (cp >= MATE_THRESHOLD) return '#+';
+    if (cp <= -MATE_THRESHOLD) return '#−';
+    return formatEvalPawns(cp);
+}
+
+function formatNodes(n) {
+    if (!n) return '';
+    if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M nodes`;
+    if (n >= 1e3) return `${Math.round(n / 1e3)}k nodes`;
+    return `${n} nodes`;
+}
+
+export function formatPvLine(evt) {
+    const cp = formatEngineScore(evt.cp);
+    const depth = evt.depth != null ? `depth ${evt.depth}` : '';
     const pv = Array.isArray(evt.pv) ? evt.pv.map(uciToSan).join(' ') : (evt.pvSan || '');
-    return `<div class="engine-pv-line"><span class="engine-pv-score">${cp}</span><span class="engine-pv-depth">${depth}</span><span class="engine-pv-moves">${pv}</span></div>`;
+    const nodes = formatNodes(evt.nodes);
+    const mate = Math.abs(evt.cp ?? 0) >= MATE_THRESHOLD ? ' engine-pv-mate' : '';
+    return `<div class="engine-pv-line" title="Engine score for the side that moved, search depth and best move">`
+        + `<span class="engine-pv-score${mate}">${cp}</span>`
+        + `<span class="engine-pv-depth">${depth}</span>`
+        + (nodes ? `<span class="engine-pv-nodes">${nodes}</span>` : '')
+        + `<span class="engine-pv-moves">${pv}</span></div>`;
 }
 
 export function clearEnginePv(side) {

@@ -301,6 +301,7 @@ export class AIPlayer {
                 depth: result.depthReached ?? maxDepth,
                 cp: Math.round(result.bestScore ?? 0),
                 pv: [result.uci],
+                nodes: result.nodes,
                 final: true,
             });
         }

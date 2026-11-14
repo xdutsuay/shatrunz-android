@@ -373,8 +373,14 @@ body {
     color: #a8c686;
 }
 
-.engine-pv-depth {
+.engine-pv-depth,
+.engine-pv-nodes {
     opacity: 0.65;
+    white-space: nowrap;
+}
+
+.engine-pv-score.engine-pv-mate {
+    color: #f2c94c;
 }
 
 .engine-pv-moves {
@@ -988,6 +994,17 @@ body.android-mvp .eval-display,
 body.android-mvp .engine-status,
 body.android-mvp .scoreboard-secondary,
 body.android-mvp .engine-pv-panel { display: none; }
+/* AI modes: one compact line under each AI's name with what it just
+   thought: score (its point of view), depth reached, nodes, best move. */
+body.android-mvp.mode-hvc .engine-pv-panel,
+body.android-mvp.mode-cvc .engine-pv-panel {
+    display: block;
+    margin: 0 0 2px;
+    max-height: 1.4em;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+body.android-mvp .engine-pv-panel .engine-pv-line:not(:last-child) { display: none; }
 body.android-mvp .move-explanation { min-height: 0; }
 body.android-mvp .android-ai-level-group { display: none; }
 body.android-mvp .android-ai-level-group input { width: 100%; }

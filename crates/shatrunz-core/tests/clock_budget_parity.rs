@@ -40,7 +40,11 @@ fn load_fixture() -> Vec<Case> {
 #[test]
 fn compute_go_time_ms_matches_js_oracle() {
     for case in load_fixture() {
-        let side = if case.input.side == "w" { Color::White } else { Color::Black };
+        let side = if case.input.side == "w" {
+            Color::White
+        } else {
+            Color::Black
+        };
         let got = compute_go_time_ms(ClockBudgetInput {
             wtime: case.input.wtime,
             btime: case.input.btime,

@@ -92,7 +92,9 @@ pub fn tapered_king(board: &Board, turn: Color) -> f64 {
         for c in 0..BOARD_SIZE {
             if let Some(p) = board.get(r, c) {
                 match p.kind {
-                    PieceKind::King => kings[if p.color == Color::White { 0 } else { 1 }] = Some((r, c)),
+                    PieceKind::King => {
+                        kings[if p.color == Color::White { 0 } else { 1 }] = Some((r, c))
+                    }
                     PieceKind::Pawn | PieceKind::Krishna => {}
                     k => phase_material += k.weight(),
                 }
@@ -103,13 +105,21 @@ pub fn tapered_king(board: &Board, turn: Color) -> f64 {
     let eg = 1.0 - mg;
     let term = |pos: Option<(usize, usize)>, color: Color| -> f64 {
         let Some((r, c)) = pos else { return 0.0 };
-        let home = if color == Color::White { BOARD_SIZE - 1 } else { 0 };
+        let home = if color == Color::White {
+            BOARD_SIZE - 1
+        } else {
+            0
+        };
         let advance = r.abs_diff(home) as f64; // ranks away from home
         let centre = (r.abs_diff(4) + c.abs_diff(4)) as f64; // 0 at e5, 8 in a corner
         mg * (-12.0 * advance) + eg * (8.0 * (4.0 - centre))
     };
     let white = term(kings[0], Color::White) - term(kings[1], Color::Black);
-    if turn == Color::White { white } else { -white }
+    if turn == Color::White {
+        white
+    } else {
+        -white
+    }
 }
 
 /// "Mop-up" guidance for K + major piece(s) vs a lone king (Krishna aside:
@@ -209,7 +219,9 @@ fn victim(board: &Board, m: Move, color: Color) -> Option<i32> {
 
 /// MVV-LVA: most valuable victim first, cheapest attacker breaking ties.
 fn capture_key(board: &Board, m: Move, v: i32) -> i32 {
-    let attacker = board.get(m.from.r, m.from.c).map_or(0, |p| p.kind.weight().min(1000));
+    let attacker = board
+        .get(m.from.r, m.from.c)
+        .map_or(0, |p| p.kind.weight().min(1000));
     100_000 + 10 * v - attacker
 }
 
@@ -218,7 +230,13 @@ fn capture_key(board: &Board, m: Move, v: i32) -> i32 {
 /// Alpha-beta returns the same exact score whatever the order; a good order
 /// just proves the other moves irrelevant sooner. The sort is stable, so
 /// ties keep the generator's order.
-fn order_moves(board: &Board, moves: &mut [Move], color: Color, ply: usize, tt_move: Option<tt::Entry>) {
+fn order_moves(
+    board: &Board,
+    moves: &mut [Move],
+    color: Color,
+    ply: usize,
+    tt_move: Option<tt::Entry>,
+) {
     HEUR.with(|h| {
         let h = h.borrow();
         let killers = h.killers[ply.min(MAX_PLY - 1)];
@@ -257,7 +275,14 @@ fn deadline_passed(cfg: &SearchConfig) -> bool {
 }
 
 /// Mirrors `quiescence` (ai.js:121-143).
-fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig, q_depth: i32) -> f64 {
+fn quiescence(
+    game: &mut Game,
+    mut alpha: f64,
+    beta: f64,
+    color: Color,
+    cfg: &SearchConfig,
+    q_depth: i32,
+) -> f64 {
     count_node();
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
@@ -304,7 +329,14 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
 
 /// Quiescence node in check: search every legal reply (not only captures).
 /// No legal reply is checkmate.
-fn quiescence_evasions(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig, q_depth: i32) -> f64 {
+fn quiescence_evasions(
+    game: &mut Game,
+    mut alpha: f64,
+    beta: f64,
+    color: Color,
+    cfg: &SearchConfig,
+    q_depth: i32,
+) -> f64 {
     let moves = game.legal_moves(color);
     if moves.is_empty() {
         return -MATE_SCORE;
@@ -350,7 +382,11 @@ fn alphabeta(
     // it one ply deeper lets the engine see mates and forced sequences
     // that a check at the horizon would otherwise hide.
     let in_check = cfg.mode == SearchMode::Full && is_king_in_check(&game.board, color);
-    let depth = if in_check && ply < MAX_PLY / 2 { depth + 1 } else { depth };
+    let depth = if in_check && ply < MAX_PLY / 2 {
+        depth + 1
+    } else {
+        depth
+    };
     if depth == 0 {
         return quiescence(game, alpha, beta, color, cfg, 4);
     }
@@ -358,7 +394,11 @@ fn alphabeta(
     // Transposition table: a result from an earlier visit at least this
     // deep either settles the node or tells us which move to try first.
     // Parity and Full searches score differently: keep their entries apart.
-    let mode_salt = if cfg.mode == SearchMode::Parity { 0x9E37_79B9_7F4A_7C15 } else { 0 };
+    let mode_salt = if cfg.mode == SearchMode::Parity {
+        0x9E37_79B9_7F4A_7C15
+    } else {
+        0
+    };
     let key = tt::hash(&game.board, color, cfg.persona) ^ mode_salt;
     let hit = tt::probe(key);
     if let Some(e) = hit {
@@ -414,16 +454,36 @@ fn alphabeta(
             && alpha.is_finite()
             && !is_king_in_check(&game.board, color.opposite())
         {
-            if i >= 8 && depth >= 5 { 2 } else { 1 }
+            if i >= 8 && depth >= 5 {
+                2
+            } else {
+                1
+            }
         } else {
             0
         };
         let mut eval_score = f64::NEG_INFINITY;
         if reduce > 0 {
-            eval_score = -alphabeta(game, depth - 1 - reduce, ply + 1, -alpha - 1.0, -alpha, color.opposite(), cfg);
+            eval_score = -alphabeta(
+                game,
+                depth - 1 - reduce,
+                ply + 1,
+                -alpha - 1.0,
+                -alpha,
+                color.opposite(),
+                cfg,
+            );
         }
         if reduce == 0 || eval_score > alpha {
-            eval_score = -alphabeta(game, depth - 1, ply + 1, -beta, -alpha, color.opposite(), cfg);
+            eval_score = -alphabeta(
+                game,
+                depth - 1,
+                ply + 1,
+                -beta,
+                -alpha,
+                color.opposite(),
+                cfg,
+            );
         }
         game.undo_move();
 

@@ -77,7 +77,11 @@ const PST_KRISHNA: [i32; 81] = [
 ];
 
 fn pst_val(kind: PieceKind, color: Color, r: usize, c: usize) -> i32 {
-    let idx = if color == Color::White { r * 9 + c } else { (8 - r) * 9 + c };
+    let idx = if color == Color::White {
+        r * 9 + c
+    } else {
+        (8 - r) * 9 + c
+    };
     match kind {
         PieceKind::Pawn => PST_PAWN[idx],
         PieceKind::Knight => PST_KNIGHT[idx],

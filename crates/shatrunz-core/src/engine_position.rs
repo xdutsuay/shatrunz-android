@@ -87,12 +87,28 @@ impl EnginePosition {
     }
 }
 
-const KNIGHT_DIRS: [(i32, i32); 8] =
-    [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)];
+const KNIGHT_DIRS: [(i32, i32); 8] = [
+    (-2, -1),
+    (-2, 1),
+    (-1, -2),
+    (-1, 2),
+    (1, -2),
+    (1, 2),
+    (2, -1),
+    (2, 1),
+];
 const BISHOP_DIRS: [(i32, i32); 4] = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
 const ROOK_DIRS: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
-const KING_DIRS: [(i32, i32); 8] =
-    [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)];
+const KING_DIRS: [(i32, i32); 8] = [
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1),
+];
 
 /// Mirrors `is_square_attacked` (position.c:64-143) — **including the
 /// inverted pawn-attack bug documented above**.
@@ -200,7 +216,10 @@ fn rights_bit_for_king(color: Color) -> u8 {
 pub fn make_move(pos: &mut EnginePosition, mv: &mut EngineMove) {
     mv.old_castling_rights = pos.castling_rights;
 
-    let piece = pos.board.get(mv.from.r, mv.from.c).expect("make_move: no piece at from");
+    let piece = pos
+        .board
+        .get(mv.from.r, mv.from.c)
+        .expect("make_move: no piece at from");
     pos.board.set(mv.to.r, mv.to.c, Some(piece));
     pos.board.set(mv.from.r, mv.from.c, None);
 
@@ -208,7 +227,10 @@ pub fn make_move(pos: &mut EnginePosition, mv: &mut EngineMove) {
         pos.board.set(
             mv.to.r,
             mv.to.c,
-            Some(Piece { color: pos.side_to_move, kind: mv.promotion_type.unwrap() }),
+            Some(Piece {
+                color: pos.side_to_move,
+                kind: mv.promotion_type.unwrap(),
+            }),
         );
     }
 
@@ -255,7 +277,10 @@ pub fn make_move(pos: &mut EnginePosition, mv: &mut EngineMove) {
 
 /// Mirrors `unmake_move` (position.c:229-261).
 pub fn unmake_move(pos: &mut EnginePosition, mv: &EngineMove) {
-    let mut piece = pos.board.get(mv.to.r, mv.to.c).expect("unmake_move: no piece at to");
+    let mut piece = pos
+        .board
+        .get(mv.to.r, mv.to.c)
+        .expect("unmake_move: no piece at to");
     if mv.is_promotion {
         piece.kind = PieceKind::Pawn;
     }
@@ -281,10 +306,22 @@ pub fn unmake_move(pos: &mut EnginePosition, mv: &EngineMove) {
     }
 }
 
-const PROMO_TYPES: [PieceKind; 4] = [PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight];
+const PROMO_TYPES: [PieceKind; 4] = [
+    PieceKind::Queen,
+    PieceKind::Rook,
+    PieceKind::Bishop,
+    PieceKind::Knight,
+];
 
 fn plain(from: ESquare, to: ESquare, captured: Option<Piece>) -> EngineMove {
-    EngineMove { from, to, captured, is_promotion: false, promotion_type: None, old_castling_rights: 0 }
+    EngineMove {
+        from,
+        to,
+        captured,
+        is_promotion: false,
+        promotion_type: None,
+        old_castling_rights: 0,
+    }
 }
 
 /// Mirrors `generate_moves` (position.c:264-461): pseudo-legal (not yet
@@ -311,7 +348,9 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                     let promo_rank: i32 = if us == Color::White { 0 } else { 8 };
 
                     let tr = ir + dir;
-                    if in_bounds(tr as isize, ic as isize) && pos.board.get(tr as usize, c).is_none() {
+                    if in_bounds(tr as isize, ic as isize)
+                        && pos.board.get(tr as usize, c).is_none()
+                    {
                         let to = ESquare { r: tr as usize, c };
                         if tr == promo_rank {
                             for &pt in &PROMO_TYPES {
@@ -353,7 +392,10 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                     for dc in [-1i32, 1] {
                         let to_flat = (ir + dir) * 9 + (ic + dc);
                         if (0..81).contains(&to_flat) {
-                            let to = ESquare { r: (to_flat / 9) as usize, c: (to_flat % 9) as usize };
+                            let to = ESquare {
+                                r: (to_flat / 9) as usize,
+                                c: (to_flat % 9) as usize,
+                            };
                             let tr = to.r as i32;
                             if let Some(captured) = pos.board.get(to.r, to.c) {
                                 if captured.color == them && captured.kind != PieceKind::Krishna {
@@ -380,11 +422,16 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                     for (dr, dc) in KNIGHT_DIRS {
                         let (nr, nc) = (ir + dr, ic + dc);
                         if in_bounds(nr as isize, nc as isize) {
-                            let to = ESquare { r: nr as usize, c: nc as usize };
+                            let to = ESquare {
+                                r: nr as usize,
+                                c: nc as usize,
+                            };
                             let captured = pos.board.get(to.r, to.c);
                             match captured {
                                 None => moves.push(plain(from, to, None)),
-                                Some(cap) if cap.color == them && cap.kind != PieceKind::Krishna => {
+                                Some(cap)
+                                    if cap.color == them && cap.kind != PieceKind::Krishna =>
+                                {
                                     moves.push(plain(from, to, Some(cap)))
                                 }
                                 _ => {}
@@ -396,7 +443,16 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                     let dirs: &[(i32, i32)] = match piece.kind {
                         PieceKind::Bishop => &BISHOP_DIRS,
                         PieceKind::Rook => &ROOK_DIRS,
-                        _ => &[(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)],
+                        _ => &[
+                            (-1, -1),
+                            (-1, 0),
+                            (-1, 1),
+                            (0, -1),
+                            (0, 1),
+                            (1, -1),
+                            (1, 0),
+                            (1, 1),
+                        ],
                     };
                     for &(dr, dc) in dirs {
                         let (mut nr, mut nc) = (ir, ic);
@@ -406,7 +462,10 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                             if !in_bounds(nr as isize, nc as isize) {
                                 break;
                             }
-                            let to = ESquare { r: nr as usize, c: nc as usize };
+                            let to = ESquare {
+                                r: nr as usize,
+                                c: nc as usize,
+                            };
                             match pos.board.get(to.r, to.c) {
                                 None => moves.push(plain(from, to, None)),
                                 Some(cap) => {
@@ -423,7 +482,10 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                     for (dr, dc) in KING_DIRS {
                         let (nr, nc) = (ir + dr, ic + dc);
                         if in_bounds(nr as isize, nc as isize) {
-                            let to = ESquare { r: nr as usize, c: nc as usize };
+                            let to = ESquare {
+                                r: nr as usize,
+                                c: nc as usize,
+                            };
                             let captured = pos.board.get(to.r, to.c);
                             if piece.kind == PieceKind::Krishna {
                                 if captured.is_none() {
@@ -432,7 +494,9 @@ pub fn generate_moves(pos: &EnginePosition) -> Vec<EngineMove> {
                             } else {
                                 match captured {
                                     None => moves.push(plain(from, to, None)),
-                                    Some(cap) if cap.color == them && cap.kind != PieceKind::Krishna => {
+                                    Some(cap)
+                                        if cap.color == them && cap.kind != PieceKind::Krishna =>
+                                    {
                                         moves.push(plain(from, to, Some(cap)))
                                     }
                                     _ => {}
@@ -519,10 +583,7 @@ pub fn uci_to_square(token: &str) -> Option<ESquare> {
     if !(0..9).contains(&r) {
         return None;
     }
-    Some(ESquare {
-        r: r as usize,
-        c,
-    })
+    Some(ESquare { r: r as usize, c })
 }
 
 /// Encode an `EngineMove` as a UCI token, including underpromotion suffix

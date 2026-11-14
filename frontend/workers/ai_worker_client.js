@@ -95,6 +95,6 @@ export function searchViaWorker(game, searchOpts, _onSearchUpdate) {
     const uciMoves = uciMovesFromGame(game);
     return new Promise((resolve, reject) => {
         _pending.set(id, { resolve, reject });
-        worker.postMessage({ type: 'search', id, uciMoves, opts: searchOpts });
+        worker.postMessage({ type: 'search', id, uciMoves, startFen: game?.startFen || null, opts: searchOpts });
     });
 }

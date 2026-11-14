@@ -6,6 +6,7 @@
  * new toggles are plain localStorage keys read where they apply.
  */
 import { SettingsKeys, getSettings, setNum } from './settings_store.js';
+import { STANDARD_START, boardToStartFen, getStartFen, setStartFen, validateStartFen } from './start_position.js';
 
 export const DrawerKeys = {
     animations: 'shatrunz_animations',
@@ -83,6 +84,27 @@ export function initSettingsDrawer() {
         document.getElementById(id).addEventListener('change', (e) => {
             localStorage.setItem(key, e.target.checked ? '1' : '0');
             applyBodyToggles();
+        });
+    }
+    // Start position (#30): validated by the Rust rules before it's saved.
+    const fenEl = document.getElementById('drawer-start-fen');
+    const fenErr = document.getElementById('drawer-start-error');
+    if (fenEl) {
+        fenEl.value = getStartFen() || STANDARD_START;
+        const apply = (fen) => {
+            const err = validateStartFen(fen);
+            fenErr.textContent = err ? `Not a valid start: ${err}` : '';
+            if (err) return;
+            setStartFen(fen);
+            fenEl.value = fen.trim();
+            setOpen(false);
+            document.getElementById('reset-game')?.click();
+        };
+        document.getElementById('drawer-start-apply')?.addEventListener('click', () => apply(fenEl.value));
+        document.getElementById('drawer-start-standard')?.addEventListener('click', () => apply(STANDARD_START));
+        document.getElementById('drawer-start-copy')?.addEventListener('click', () => {
+            const g = window.__shatrunzGame?.();
+            if (g) { fenEl.value = boardToStartFen(g.board, g.turn); fenErr.textContent = ''; }
         });
     }
     applyBodyToggles();

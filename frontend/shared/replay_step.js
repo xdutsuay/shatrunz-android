@@ -3,15 +3,16 @@ import { parseUCIMove } from './uci.js';
 
 /** Step-through replay over a fixed UCI move list. */
 export class ReplayStepController {
-    constructor(uciMoves) {
+    constructor(uciMoves, startFen = null) {
         this.uciMoves = [...uciMoves];
+        this.startFen = startFen;
         this.ply = 0;
-        this.game = new Game();
+        this.game = new Game({ fen: this.startFen });
         this._rebuild();
     }
 
     _rebuild() {
-        this.game = new Game();
+        this.game = new Game({ fen: this.startFen });
         for (let i = 0; i < this.ply; i++) {
             const parsed = parseUCIMove(this.uciMoves[i]);
             if (!parsed) throw new Error(`Invalid UCI: ${this.uciMoves[i]}`);

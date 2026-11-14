@@ -61,7 +61,11 @@ thread_local! {
 /// Hash of the board, side to move and persona.
 pub fn hash(board: &Board, color: Color, persona: Persona) -> u64 {
     ZOBRIST.with(|z| {
-        let mut h = if color == Color::Black { z.black_to_move } else { 0 };
+        let mut h = if color == Color::Black {
+            z.black_to_move
+        } else {
+            0
+        };
         h ^= z.persona[persona as usize];
         for r in 0..BOARD_SIZE {
             for c in 0..BOARD_SIZE {
@@ -97,11 +101,20 @@ pub struct Entry {
 }
 
 impl Entry {
-    const EMPTY: Entry = Entry { key: 0, score: 0.0, depth: -1, bound: Bound::Upper, from: u8::MAX, to: u8::MAX };
+    const EMPTY: Entry = Entry {
+        key: 0,
+        score: 0.0,
+        depth: -1,
+        bound: Bound::Upper,
+        from: u8::MAX,
+        to: u8::MAX,
+    };
 
     /// Whether `m` is the move stored in this entry.
     pub fn is_move(&self, m: Move) -> bool {
-        self.from != u8::MAX && sq(m.from) == self.from && (m.to.r * BOARD_SIZE + m.to.c) as u8 == self.to
+        self.from != u8::MAX
+            && sq(m.from) == self.from
+            && (m.to.r * BOARD_SIZE + m.to.c) as u8 == self.to
     }
 }
 
@@ -122,9 +135,18 @@ pub fn probe(key: u64) -> Option<Entry> {
 
 /// Always-replace: the newest result is the most relevant to the next move.
 pub fn store(key: u64, depth: i32, score: f64, bound: Bound, best: Option<Move>) {
-    let (from, to) = best.map_or((u8::MAX, u8::MAX), |m| (sq(m.from), (m.to.r * BOARD_SIZE + m.to.c) as u8));
+    let (from, to) = best.map_or((u8::MAX, u8::MAX), |m| {
+        (sq(m.from), (m.to.r * BOARD_SIZE + m.to.c) as u8)
+    });
     TABLE.with(|t| {
-        t.borrow_mut()[slot(key)] = Entry { key, score, depth: depth as i16, bound, from, to };
+        t.borrow_mut()[slot(key)] = Entry {
+            key,
+            score,
+            depth: depth as i16,
+            bound,
+            from,
+            to,
+        };
     });
 }
 

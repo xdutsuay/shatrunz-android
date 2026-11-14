@@ -17,9 +17,11 @@ function normalizePiece(p) {
 }
 
 export class Game {
-    constructor() {
+    /** @param {{fen?: string|null}} [opts] custom start (#30); throws if invalid */
+    constructor({ fen = null } = {}) {
         const { WasmGame } = getWasm();
-        this._wasm = new WasmGame();
+        this._wasm = fen ? WasmGame.fromStartFen(fen) : new WasmGame();
+        this.startFen = fen || null;
         this.board = emptyBoard();
         this.turn = COLORS.WHITE;
         this.gameOver = false;

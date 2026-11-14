@@ -7,8 +7,8 @@ use shatrunz_core::game::Game;
 use shatrunz_core::uci::parse_uci_move;
 
 const LINE: &[&str] = &[
-    "i2i3", "g8g7", "g2g4", "a8a6", "d2d3", "e8e7", "d1d2", "b8b6", "d2i7", "f9i6", "b2b4",
-    "d9e8", "i7h6", "g9g8", "c2c4", "f8f7", "h2h4", "e7e6", "a2a3", "c8c7", "e1d1", "e9g9",
+    "i2i3", "g8g7", "g2g4", "a8a6", "d2d3", "e8e7", "d1d2", "b8b6", "d2i7", "f9i6", "b2b4", "d9e8",
+    "i7h6", "g9g8", "c2c4", "f8f7", "h2h4", "e7e6", "a2a3", "c8c7", "e1d1", "e9g9",
 ];
 
 #[test]
@@ -23,7 +23,10 @@ fn castling_from_plain_uci_moves_the_rook() {
     let rook = g.board.get(0, 5).expect("rook on f9");
     assert_eq!(format!("{:?}", king.kind), "King");
     assert_eq!(format!("{:?}", rook.kind), "Rook");
-    assert!(g.board.get(0, 8).is_none(), "i9 must be empty after castling");
+    assert!(
+        g.board.get(0, 8).is_none(),
+        "i9 must be empty after castling"
+    );
 }
 
 #[test]

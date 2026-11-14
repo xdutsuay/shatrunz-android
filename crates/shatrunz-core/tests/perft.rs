@@ -87,7 +87,10 @@ fn perft_seeded_positions_match_js_oracle() {
     for case in &fixture.seeded {
         let mut game = Game::new();
         for mv in &case.path {
-            let from = Square { r: mv.from.r, c: mv.from.c };
+            let from = Square {
+                r: mv.from.r,
+                c: mv.from.c,
+            };
             let to = MoveTarget {
                 r: mv.to.r,
                 c: mv.to.c,

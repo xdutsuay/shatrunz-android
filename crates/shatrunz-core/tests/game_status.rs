@@ -53,10 +53,38 @@ fn synthetic_game(placements: &[(usize, usize, Piece)], turn: Color) -> Game {
 fn checkmate_ladder_mate_matches_js_oracle() {
     let game = synthetic_game(
         &[
-            (0, 0, Piece { color: Color::Black, kind: PieceKind::King }),
-            (0, 8, Piece { color: Color::White, kind: PieceKind::Rook }),
-            (1, 8, Piece { color: Color::White, kind: PieceKind::Rook }),
-            (8, 4, Piece { color: Color::White, kind: PieceKind::King }),
+            (
+                0,
+                0,
+                Piece {
+                    color: Color::Black,
+                    kind: PieceKind::King,
+                },
+            ),
+            (
+                0,
+                8,
+                Piece {
+                    color: Color::White,
+                    kind: PieceKind::Rook,
+                },
+            ),
+            (
+                1,
+                8,
+                Piece {
+                    color: Color::White,
+                    kind: PieceKind::Rook,
+                },
+            ),
+            (
+                8,
+                4,
+                Piece {
+                    color: Color::White,
+                    kind: PieceKind::King,
+                },
+            ),
         ],
         Color::Black,
     );
@@ -72,9 +100,30 @@ fn checkmate_ladder_mate_matches_js_oracle() {
 fn stalemate_corner_matches_js_oracle() {
     let game = synthetic_game(
         &[
-            (0, 0, Piece { color: Color::Black, kind: PieceKind::King }),
-            (2, 1, Piece { color: Color::White, kind: PieceKind::King }),
-            (1, 2, Piece { color: Color::White, kind: PieceKind::Queen }),
+            (
+                0,
+                0,
+                Piece {
+                    color: Color::Black,
+                    kind: PieceKind::King,
+                },
+            ),
+            (
+                2,
+                1,
+                Piece {
+                    color: Color::White,
+                    kind: PieceKind::King,
+                },
+            ),
+            (
+                1,
+                2,
+                Piece {
+                    color: Color::White,
+                    kind: PieceKind::Queen,
+                },
+            ),
         ],
         Color::Black,
     );
@@ -115,14 +164,26 @@ fn castling_moves_king_and_rook_and_updates_hash() {
     let before_key = game.position_key();
     assert!(game.execute_move(castle.from, castle.to));
 
-    assert_eq!(game.board.get(8, 6).map(|p| p.kind), Some(shatrunz_core::piece::PieceKind::King));
-    assert_eq!(game.board.get(8, 5).map(|p| p.kind), Some(shatrunz_core::piece::PieceKind::Rook));
+    assert_eq!(
+        game.board.get(8, 6).map(|p| p.kind),
+        Some(shatrunz_core::piece::PieceKind::King)
+    );
+    assert_eq!(
+        game.board.get(8, 5).map(|p| p.kind),
+        Some(shatrunz_core::piece::PieceKind::Rook)
+    );
     assert_eq!(game.board.get(8, 4), None);
     assert_eq!(game.board.get(8, 8), None);
     assert_ne!(game.position_key(), before_key);
 
     assert!(game.undo_last_move());
     assert_eq!(game.position_key(), before_key);
-    assert_eq!(game.board.get(8, 4).map(|p| p.kind), Some(shatrunz_core::piece::PieceKind::King));
-    assert_eq!(game.board.get(8, 8).map(|p| p.kind), Some(shatrunz_core::piece::PieceKind::Rook));
+    assert_eq!(
+        game.board.get(8, 4).map(|p| p.kind),
+        Some(shatrunz_core::piece::PieceKind::King)
+    );
+    assert_eq!(
+        game.board.get(8, 8).map(|p| p.kind),
+        Some(shatrunz_core::piece::PieceKind::Rook)
+    );
 }

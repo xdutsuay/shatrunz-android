@@ -3,6 +3,12 @@ import { COLORS } from '../constants.js';
 import { Rules } from '../rules.js';
 import { MODES } from '../mode_logic.js';
 import { moveToUCI } from './uci.js';
+import { getStartFen } from './start_position.js';
+
+/** New game from the configured start; a broken stored start falls back to standard. */
+function newGameFromSettings() {
+    try { return new Game({ fen: getStartFen() }); } catch { return new Game(); }
+}
 import { finalizeBrainsForResult, persistGameAndBrains } from './brain_utils.js';
 
 export class GameSession {
@@ -12,7 +18,7 @@ export class GameSession {
         this.getAiState = getAiState;
         this.isAiTurnFn = isAiTurnFn;
         this.getAutoPlay = getAutoPlay;
-        this.game = new Game();
+        this.game = newGameFromSettings();
         this.uciMoveHistory = [];
         this.onAfterMove = null;
     }
@@ -20,11 +26,12 @@ export class GameSession {
     persistActiveGame() {
         this.pgnManager.saveActiveGame?.(this.getMode(), this.uciMoveHistory, {
             autoPlay: Boolean(this.getAutoPlay?.()),
+            startFen: this.game.startFen,
         });
     }
 
     reset() {
-        this.game = new Game();
+        this.game = newGameFromSettings();
         this.uciMoveHistory = [];
     }
 

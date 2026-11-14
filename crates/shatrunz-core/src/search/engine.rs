@@ -115,7 +115,8 @@ fn quiescence(pos: &mut EnginePosition, alpha: i32, beta: i32, ply: i32) -> i32 
         }
         let mut mv = m;
         make_move(pos, &mut mv);
-        let score = quiescence(pos, beta.wrapping_neg(), alpha.wrapping_neg(), ply + 1).wrapping_neg();
+        let score =
+            quiescence(pos, beta.wrapping_neg(), alpha.wrapping_neg(), ply + 1).wrapping_neg();
         unmake_move(pos, &mv);
         if score >= beta {
             return beta;
@@ -143,7 +144,14 @@ fn alphabeta(pos: &mut EnginePosition, depth: i32, alpha: i32, beta: i32, ply: i
     for m in moves {
         let mut mv = m;
         make_move(pos, &mut mv);
-        let score = alphabeta(pos, depth - 1, beta.wrapping_neg(), alpha.wrapping_neg(), ply + 1).wrapping_neg();
+        let score = alphabeta(
+            pos,
+            depth - 1,
+            beta.wrapping_neg(),
+            alpha.wrapping_neg(),
+            ply + 1,
+        )
+        .wrapping_neg();
         unmake_move(pos, &mv);
         if score >= beta {
             return beta;

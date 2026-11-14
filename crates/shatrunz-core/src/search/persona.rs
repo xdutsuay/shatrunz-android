@@ -138,8 +138,12 @@ struct DepthResult {
 /// (ai.js:253-304) — root moves are scored via `alphabeta`, then
 /// `root_bonus` is added (replacing JS's brain/book/positionValue/policy
 /// terms, computed externally and passed in already summed per move; see
-/// module doc). A partial sweep cut short by the deadline still commits
-/// whatever `local_best` it found — JS doesn't discard incomplete depths.
+/// module doc). A partial sweep cut short by the deadline commits the best
+/// of the moves it *finished*; the move whose subtree was interrupted is
+/// dropped, because the deadline makes every node below it return a static
+/// eval and its score is noise. Callers put the previous iteration's best
+/// move first, so a partial sweep can only replace it with a move that
+/// genuinely scored better at the deeper depth.
 fn search_one_depth(
     game: &mut Game,
     moves: &[Move],
@@ -166,6 +170,9 @@ fn search_one_depth(
             cfg,
         );
         game.undo_move();
+        if deadline_passed(cfg) {
+            break;
+        }
         score += root_bonus(m);
 
         if score > local_score {
@@ -226,11 +233,18 @@ pub fn get_best_move(
     let mut depth_reached = 0;
 
     if cfg.deadline.is_some() {
+        // Iterative deepening, best-move-first: the previous iteration's
+        // best is searched first so a deadline-truncated iteration can't
+        // swap it for a move that merely happened to be looked at early.
+        let mut order = moves.clone();
         for d in 1..=max_depth {
             if deadline_passed(cfg) {
                 break;
             }
-            if let Some(r) = search_one_depth(game, &moves, d, color, cfg, root_bonus) {
+            if let Some(r) = search_one_depth(game, &order, d, color, cfg, root_bonus) {
+                if let Some(i) = order.iter().position(|&m| m == r.best_move) {
+                    order[..=i].rotate_right(1);
+                }
                 best_move = Some(r.best_move);
                 best_score = r.best_score;
                 second_score = r.second_score;

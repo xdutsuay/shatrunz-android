@@ -33,6 +33,12 @@ use crate::game::Game;
 use crate::moves::Move;
 use crate::phase::endgame_depth_bonus;
 use crate::piece::Color;
+use crate::rules::is_king_in_check;
+
+/// Score for being checkmated, far outside any material/positional eval.
+/// The remaining depth is added so a mate found closer to the root (sooner)
+/// scores higher for the winner than one found deeper.
+pub const MATE_SCORE: f64 = 100_000.0;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchConfig {
@@ -91,11 +97,11 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
     alpha
 }
 
-/// Mirrors `alphabeta` (ai.js:145-177). Note: when a position has no
-/// legal moves (checkmate or stalemate), this just falls back to the
-/// static persona eval of that frozen position — it does **not** return a
-/// mate score. That's a real quirk of the JS persona search (unlike the C
-/// engine's search, which does score mates), preserved here deliberately.
+/// Mirrors `alphabeta` (ai.js:145-177), with one deliberate divergence:
+/// a node with no legal moves returns a mate score (checkmate) or 0
+/// (stalemate). The JS original fell back to the static eval there, so the
+/// AI could not tell checkmate from any other position and never mated a
+/// lone king. The JS search is now only a no-wasm fallback.
 fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig) -> f64 {
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
@@ -106,7 +112,13 @@ fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Colo
 
     let moves = game.legal_moves(color);
     if moves.is_empty() {
-        return evaluate_with_randomness(&game.board, color, cfg);
+        // No legal moves is a game end, not a quiet position: checkmate is
+        // the worst possible result for the side to move, stalemate a draw.
+        return if is_king_in_check(&game.board, color) {
+            -(MATE_SCORE + depth as f64)
+        } else {
+            0.0
+        };
     }
 
     let mut max_eval = f64::NEG_INFINITY;

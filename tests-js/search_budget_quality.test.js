@@ -4,11 +4,16 @@
  * Regression: when the deadline cut an iteration short, the root loop kept
  * whichever move it happened to look at first (in move-generation order)
  * and threw away the previous, fully searched depth. With ~150 ms per move
- * that regularly played moves ~1400 cp worse than a plain depth-3 search.
+ * that regularly played moves ~1400 cp worse than a plain fixed-depth search.
  *
  * Check: over positions from a seeded random walk, the budgeted move,
  * judged by a fixed 2-ply reply search, is never much worse than the move a
- * fixed depth-3 search picks.
+ * fixed-depth search picks at the last depth the budgeted search is
+ * guaranteed to have completed (depthReached - 1).
+ *
+ * Comparing against the depth actually reached, instead of a hard-coded
+ * depth 3, keeps the test independent of machine speed: on a slow or busy
+ * CI runner the budget buys fewer plies, and the reference shrinks with it.
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -39,20 +44,25 @@ function judge(m, pos, uci) {
 }
 
 describe('budgeted search quality', () => {
-    it('never plays a move far worse than a depth-3 search would', () => {
+    it('never plays a move far worse than a completed shallower search', () => {
         const m = getWasm();
         const blunders = [];
+        let checked = 0;
         for (const pos of positions(m)) {
             const color = m.WasmGame.fromUciMoves(pos).turn();
-            const ref = m.searchBestMove(m.WasmGame.fromUciMoves(pos), {
-                color, persona: 'material', depth: 3, rootBonuses: {},
-            });
             const bud = m.searchBestMove(m.WasmGame.fromUciMoves(pos), {
                 color, persona: 'material', depth: 6, budgetMs: 150, rootBonuses: {},
+            });
+            const refDepth = bud.depthReached - 1;
+            if (refDepth < 1) continue; // budget too small to say anything here
+            checked++;
+            const ref = m.searchBestMove(m.WasmGame.fromUciMoves(pos), {
+                color, persona: 'material', depth: refDepth, rootBonuses: {},
             });
             const loss = judge(m, pos, ref.uci) - judge(m, pos, bud.uci);
             if (loss > 200) blunders.push(`${pos.length} plies: ${bud.uci} vs ${ref.uci} (-${Math.round(loss)} cp)`);
         }
+        assert.ok(checked >= 12, `only ${checked} positions had a usable reference depth`);
         assert.deepEqual(blunders, []);
     });
 });

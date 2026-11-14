@@ -654,7 +654,9 @@ function updateCapturedRows(game) {
         if (!el) return;
         const lead = color === COLORS.WHITE ? diffPawns : -diffPawns;
         const pieces = color === COLORS.WHITE ? w : b;
-        el.innerHTML = `<span class="captured-pieces">${pieces.join('')}</span>`
+        // Nothing to show: leave the row truly empty so `:empty` collapses it
+        // and the start position keeps its original layout.
+        el.innerHTML = (pieces.length ? `<span class="captured-pieces">${pieces.join('')}</span>` : '')
             + (lead > 0 ? `<span class="captured-lead">+${lead}</span>` : '');
     };
     paint('captured-top', topColor);

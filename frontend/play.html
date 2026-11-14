@@ -167,6 +167,15 @@
             <p class="settings-note">Strength and think time apply from the AI's next move (strength mid-game: next game).</p>
         </section>
         <section>
+            <h3>Per engine (time odds)</h3>
+            <div class="side-engine-grid">
+                <span></span><span>Strength</span><span>Think time</span>
+                <span>White</span><select id="drawer-w-level" aria-label="White engine strength"></select><select id="drawer-w-think" aria-label="White engine think time"></select>
+                <span>Black</span><select id="drawer-b-level" aria-label="Black engine strength"></select><select id="drawer-b-think" aria-label="Black engine think time"></select>
+            </div>
+            <p class="settings-note">"Same" uses the settings above. Applies to whichever side an engine plays (both in AI vs AI) from its next move; clocks, if on, take priority.</p>
+        </section>
+        <section>
             <h3>Board</h3>
             <label for="drawer-theme">Theme</label>
             <select id="drawer-theme"><option value="classic">Wood</option><option value="green">Green</option></select>

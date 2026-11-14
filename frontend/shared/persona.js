@@ -61,9 +61,26 @@ export function levelToDepth(level) {
 }
 
 export function levelToJsDepth(level) {
-    const lv = Math.max(1, Math.min(5, Number(level) || 3));
-    const map = { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8 };
+    // The Android slider goes to 6; level 6 shares level 5's depth cap and
+    // gets its extra strength from a longer think time (thinkTimeMsForLevel).
+    const lv = Math.max(1, Math.min(6, Number(level) || 3));
+    const map = { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 8 };
     return map[lv] ?? 6;
+}
+
+/**
+ * Per-move think time when chess clocks are off.
+ *
+ * Without a budget the search runs to a fixed depth, and this engine's
+ * fixed-depth cost grows ~10x per ply (depth 5 ≈ 3 s, depth 6 ≈ 30 s+ from
+ * the start position, far worse in the middlegame). A budget switches the
+ * search to iterative deepening: it always returns the best move from the
+ * deepest completed iteration when time runs out.
+ */
+export function thinkTimeMsForLevel(level) {
+    const lv = Math.max(1, Math.min(6, Number(level) || 3));
+    const map = { 1: 250, 2: 500, 3: 1000, 4: 1800, 5: 3000, 6: 5000 };
+    return map[lv];
 }
 
 /** Minimum ms between plies when clocks off; zero when clocks on. */

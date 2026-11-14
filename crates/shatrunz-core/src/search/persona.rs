@@ -52,7 +52,54 @@ pub struct SearchConfig {
 
 fn evaluate_with_randomness(board: &Board, turn: Color, cfg: &SearchConfig) -> f64 {
     let _ = cfg.add_randomness; // see module doc: not implemented
-    evaluate_for_search(board, turn, cfg.persona) as f64
+    evaluate_for_search(board, turn, cfg.persona) as f64 + mop_up(board, turn)
+}
+
+/// "Mop-up" guidance for K + major piece(s) vs a lone king (Krishna aside:
+/// it can't capture or be captured, so it doesn't count as material).
+///
+/// Mating a bare king takes 10–20 moves, far beyond the search horizon, and
+/// the normal eval sees every square as equal, so the stronger side just
+/// wanders. The two classic hints give the search a gradient to follow:
+/// drive the losing king to the edge (distance from the centre) and bring
+/// the winning king close (kings' distance). Returned from `turn`'s view.
+/// Only applies in lone-king endings, so normal play is unaffected.
+pub fn mop_up(board: &Board, turn: Color) -> f64 {
+    use crate::board::BOARD_SIZE;
+    use crate::piece::PieceKind;
+    let mut material = [0i32; 2];
+    let mut kings = [None; 2];
+    for r in 0..BOARD_SIZE {
+        for c in 0..BOARD_SIZE {
+            if let Some(p) = board.get(r, c) {
+                let i = if p.color == Color::White { 0 } else { 1 };
+                match p.kind {
+                    PieceKind::King => kings[i] = Some((r as i32, c as i32)),
+                    PieceKind::Krishna => {}
+                    k => material[i] += k.weight(),
+                }
+            }
+        }
+    }
+    let (Some(wk), Some(bk)) = (kings[0], kings[1]) else {
+        return 0.0;
+    };
+    let (strong, weak_king, strong_king) = if material[1] == 0 && material[0] >= 500 {
+        (Color::White, bk, wk)
+    } else if material[0] == 0 && material[1] >= 500 {
+        (Color::Black, wk, bk)
+    } else {
+        return 0.0;
+    };
+    let center = (BOARD_SIZE / 2) as i32;
+    let edge_push = (weak_king.0 - center).abs() + (weak_king.1 - center).abs();
+    let kings_apart = (weak_king.0 - strong_king.0).abs() + (weak_king.1 - strong_king.1).abs();
+    let bonus = (10 * edge_push + 4 * (2 * BOARD_SIZE as i32 - kings_apart)) as f64;
+    if turn == strong {
+        bonus
+    } else {
+        -bonus
+    }
 }
 
 fn deadline_passed(cfg: &SearchConfig) -> bool {

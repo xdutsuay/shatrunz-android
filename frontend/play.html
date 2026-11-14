@@ -52,6 +52,15 @@
 
             <div id="board"></div>
 
+            <div id="game-over-card" class="game-over-card" role="dialog" aria-modal="false" aria-labelledby="game-over-title" hidden>
+                <div id="game-over-title" class="game-over-title">Game over</div>
+                <div id="game-over-reason" class="game-over-reason"></div>
+                <div class="game-over-actions">
+                    <button id="game-over-rematch" class="btn primary" type="button">Rematch</button>
+                    <button id="game-over-review" class="btn secondary" type="button">See board</button>
+                </div>
+            </div>
+
             <div class="user-tag bottom">
                 <span class="user-icon">👤</span>
                 <div class="user-info">

@@ -34,6 +34,7 @@ use crate::moves::Move;
 use crate::phase::endgame_depth_bonus;
 use crate::piece::Color;
 use crate::rules::is_king_in_check;
+use crate::search::tt::{self, Bound};
 
 /// Score for being checkmated, far outside any material/positional eval.
 /// The remaining depth is added so a mate found closer to the root (sooner)
@@ -156,16 +157,19 @@ fn capture_key(board: &Board, m: Move, v: i32) -> i32 {
     100_000 + 10 * v - attacker
 }
 
-/// Searches the moves most likely to cause a cutoff first: captures
-/// (MVV-LVA), then this ply's killers, then quiet moves by history score.
+/// Searches the moves most likely to cause a cutoff first: the
+/// transposition table's best move, captures (MVV-LVA), then this ply's killers, then quiet moves by history score.
 /// Alpha-beta returns the same exact score whatever the order; a good order
 /// just proves the other moves irrelevant sooner. The sort is stable, so
 /// ties keep the generator's order.
-fn order_moves(board: &Board, moves: &mut [Move], color: Color, ply: usize) {
+fn order_moves(board: &Board, moves: &mut [Move], color: Color, ply: usize, tt_move: Option<tt::Entry>) {
     HEUR.with(|h| {
         let h = h.borrow();
         let killers = h.killers[ply.min(MAX_PLY - 1)];
         moves.sort_by_cached_key(|&m| {
+            if tt_move.is_some_and(|e| e.is_move(m)) {
+                return std::cmp::Reverse(i32::MAX);
+            }
             let key = match victim(board, m, color) {
                 Some(v) => capture_key(board, m, v),
                 None if killers[0] == Some(m) => 90_000,
@@ -260,6 +264,22 @@ fn alphabeta(
         return quiescence(game, alpha, beta, color, cfg, 4);
     }
 
+    // Transposition table: a result from an earlier visit at least this
+    // deep either settles the node or tells us which move to try first.
+    let key = tt::hash(&game.board, color, cfg.persona);
+    let hit = tt::probe(key);
+    if let Some(e) = hit {
+        if e.depth as i32 >= depth {
+            match e.bound {
+                Bound::Exact => return e.score,
+                Bound::Lower if e.score >= beta => return e.score,
+                Bound::Upper if e.score <= alpha => return e.score,
+                _ => {}
+            }
+        }
+    }
+    let alpha_orig = alpha;
+
     let mut moves = game.legal_moves(color);
     if moves.is_empty() {
         // No legal moves is a game end, not a quiet position: checkmate is
@@ -271,8 +291,9 @@ fn alphabeta(
         };
     }
 
-    order_moves(&game.board, &mut moves, color, ply);
+    order_moves(&game.board, &mut moves, color, ply, hit);
     let mut max_eval = f64::NEG_INFINITY;
+    let mut best = None;
     for m in moves {
         let quiet = victim(&game.board, m, color).is_none();
         game.make_move(m.from, m.to);
@@ -281,6 +302,7 @@ fn alphabeta(
 
         if eval_score > max_eval {
             max_eval = eval_score;
+            best = Some(m);
         }
         if eval_score > alpha {
             alpha = eval_score;
@@ -291,6 +313,18 @@ fn alphabeta(
             }
             break;
         }
+    }
+    // A subtree cut short by the deadline returned static evals: never
+    // let that noise into the table.
+    if !deadline_passed(cfg) {
+        let bound = if max_eval <= alpha_orig {
+            Bound::Upper
+        } else if max_eval >= beta {
+            Bound::Lower
+        } else {
+            Bound::Exact
+        };
+        tt::store(key, depth, max_eval, bound, best);
     }
     max_eval
 }

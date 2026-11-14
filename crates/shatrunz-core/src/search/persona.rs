@@ -331,6 +331,18 @@ fn alphabeta(
     }
     let alpha_orig = alpha;
 
+    // Reverse futility pruning (static null move): close to the horizon,
+    // if the static eval beats beta by more than any plausible swing over
+    // the remaining plies, assume the node fails high and skip its moves.
+    // Not in check, and never with mate scores in the window.
+    if cfg.mode == SearchMode::Full && depth <= 2 && !in_check && beta.abs() < MATE_SCORE / 2.0 {
+        let margin = 120.0 * depth as f64;
+        let static_eval = evaluate_with_randomness(&game.board, color, cfg);
+        if static_eval - margin >= beta {
+            return static_eval - margin;
+        }
+    }
+
     let mut moves = game.legal_moves(color);
     if moves.is_empty() {
         // No legal moves is a game end, not a quiet position: checkmate is

@@ -219,12 +219,20 @@ fn search_one_depth(
         if deadline_passed(cfg) {
             break;
         }
+        // Root window: a move only matters if it beats the current
+        // *second*-best (then it changes best or second). So search it with
+        // alpha = second - its bonus; anything that fails low is provably
+        // irrelevant and its subtree gets cut. Using second (not best) keeps
+        // both best_score and second_score exact, so results are identical
+        // to the old full-window search, only faster.
+        let bonus = root_bonus(m);
+        let alpha = local_second - bonus;
         game.make_move(m.from, m.to);
         let mut score = -alphabeta(
             game,
             depth as i32 - 1,
             f64::NEG_INFINITY,
-            f64::INFINITY,
+            -alpha,
             color.opposite(),
             cfg,
         );
@@ -232,7 +240,7 @@ fn search_one_depth(
         if deadline_passed(cfg) {
             break;
         }
-        score += root_bonus(m);
+        score += bonus;
 
         if score > local_score {
             local_second = local_score;

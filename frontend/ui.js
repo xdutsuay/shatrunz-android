@@ -1,5 +1,6 @@
 import { COLORS } from './constants.js';
 import { gameOverHeadline } from './shared/game_over.js';
+import { capturedSummary } from './shared/captured.js';
 import { Rules } from './rules.js';
 import { AIPlayer } from './ai.js';
 import { PGNManager } from './pgn.js';
@@ -642,11 +643,32 @@ function updateGameOverCard(status) {
     card.hidden = !show;
 }
 
+// Captured pieces + material balance under each name, computed from the
+// board so undo, replay and restored games never drift.
+function updateCapturedRows(game) {
+    const { w, b, diffPawns } = capturedSummary(game.board);
+    // The top name row is always Black's (like opponent-time and engine-pv-top).
+    const topColor = COLORS.BLACK;
+    const paint = (id, color) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const lead = color === COLORS.WHITE ? diffPawns : -diffPawns;
+        const pieces = color === COLORS.WHITE ? w : b;
+        // Nothing to show: leave the row truly empty so `:empty` collapses it
+        // and the start position keeps its original layout.
+        el.innerHTML = (pieces.length ? `<span class="captured-pieces">${pieces.join('')}</span>` : '')
+            + (lead > 0 ? `<span class="captured-lead">+${lead}</span>` : '');
+    };
+    paint('captured-top', topColor);
+    paint('captured-bottom', topColor === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE);
+}
+
 function updateStatus() {
     const game = getGame();
     const status = game.checkStatus();
     statusEl.innerText = status.msg;
     updateGameOverCard(status);
+    updateCapturedRows(game);
     const materialCp = game.getScore();
     const evalEl = document.getElementById('eval-display');
     const engineEl = document.getElementById('engine-status');

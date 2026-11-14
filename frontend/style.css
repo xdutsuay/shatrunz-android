@@ -1390,6 +1390,7 @@ body.android-mvp .captured-row { margin: 0 0 2px; }
 .settings-drawer textarea { width: 100%; box-sizing: border-box; font: 0.8rem ui-monospace, monospace; padding: 8px; border-radius: 8px; background: #111; color: #eee; border: 1px solid rgba(255,255,255,0.18); }
 .settings-row { display: flex; gap: 8px; }
 .settings-row .btn { flex: 1; }
+.settings-row input[type=number] { width: 7.5em; padding: 8px; border-radius: 8px; background: #111; color: #eee; border: 1px solid rgba(255,255,255,0.18); }
 .settings-error { margin: 0; min-height: 1em; font-size: 0.78rem; color: #ff8a80; }
 .settings-error:empty { display: none; }
 body.hide-engine-line .engine-pv-panel { display: none !important; }

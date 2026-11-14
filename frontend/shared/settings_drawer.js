@@ -6,6 +6,7 @@
  * new toggles are plain localStorage keys read where they apply.
  */
 import { SettingsKeys, getSettings, setNum } from './settings_store.js';
+import { idForStartFen, randomShatrunz960Id, startFenFor } from './shatrunz960.js';
 import { STANDARD_START, boardToStartFen, getStartFen, setStartFen, validateStartFen } from './start_position.js';
 
 export const DrawerKeys = {
@@ -91,17 +92,32 @@ export function initSettingsDrawer() {
     const fenErr = document.getElementById('drawer-start-error');
     if (fenEl) {
         fenEl.value = getStartFen() || STANDARD_START;
+        const label960 = document.getElementById('drawer-960-label');
+        const id960 = document.getElementById('drawer-960-id');
+        const showLabel = () => {
+            const id = idForStartFen(getStartFen() || STANDARD_START);
+            if (label960) label960.textContent = id === null ? 'Current start: custom' : `Current start: Shatrunz960 #${id}`;
+            if (id960 && id !== null) id960.value = String(id);
+        };
+        showLabel();
         const apply = (fen) => {
             const err = validateStartFen(fen);
             fenErr.textContent = err ? `Not a valid start: ${err}` : '';
             if (err) return;
             setStartFen(fen);
             fenEl.value = fen.trim();
+            showLabel();
             setOpen(false);
             document.getElementById('reset-game')?.click();
         };
         document.getElementById('drawer-start-apply')?.addEventListener('click', () => apply(fenEl.value));
         document.getElementById('drawer-start-standard')?.addEventListener('click', () => apply(STANDARD_START));
+        document.getElementById('drawer-960-random')?.addEventListener('click', () => apply(startFenFor(randomShatrunz960Id())));
+        document.getElementById('drawer-960-apply')?.addEventListener('click', () => {
+            const id = Number(id960?.value);
+            if (!Number.isInteger(id) || id < 0 || id > 8399) { fenErr.textContent = 'Shatrunz960 number must be 0–8399'; return; }
+            apply(startFenFor(id));
+        });
         document.getElementById('drawer-start-copy')?.addEventListener('click', () => {
             const g = window.__shatrunzGame?.();
             if (g) { fenEl.value = boardToStartFen(g.board, g.turn); fenErr.textContent = ''; }

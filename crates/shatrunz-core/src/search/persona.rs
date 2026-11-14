@@ -345,10 +345,32 @@ fn alphabeta(
     order_moves(&game.board, &mut moves, color, ply, hit);
     let mut max_eval = f64::NEG_INFINITY;
     let mut best = None;
-    for m in moves {
+    for (i, m) in moves.into_iter().enumerate() {
         let quiet = victim(&game.board, m, color).is_none();
         game.make_move(m.from, m.to);
-        let eval_score = -alphabeta(game, depth - 1, ply + 1, -beta, -alpha, color.opposite(), cfg);
+        // Late-move reductions: with good ordering, quiet moves near the end
+        // of the list rarely matter. Search them shallower with a null
+        // window; only if one surprises us (beats alpha) is it re-searched
+        // at full depth. Never for captures, checks, or while in check.
+        let reduce = if cfg.mode == SearchMode::Full
+            && depth >= 3
+            && i >= 3
+            && quiet
+            && !in_check
+            && alpha.is_finite()
+            && !is_king_in_check(&game.board, color.opposite())
+        {
+            if i >= 8 && depth >= 5 { 2 } else { 1 }
+        } else {
+            0
+        };
+        let mut eval_score = f64::NEG_INFINITY;
+        if reduce > 0 {
+            eval_score = -alphabeta(game, depth - 1 - reduce, ply + 1, -alpha - 1.0, -alpha, color.opposite(), cfg);
+        }
+        if reduce == 0 || eval_score > alpha {
+            eval_score = -alphabeta(game, depth - 1, ply + 1, -beta, -alpha, color.opposite(), cfg);
+        }
         game.undo_move();
 
         if eval_score > max_eval {

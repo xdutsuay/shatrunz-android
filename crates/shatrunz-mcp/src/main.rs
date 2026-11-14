@@ -37,7 +37,7 @@ use shatrunz_core::game::Game;
 use shatrunz_core::moves::Square;
 use shatrunz_core::phase::get_phase;
 use shatrunz_core::piece::Color;
-use shatrunz_core::search::persona::{get_best_move, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
 use shatrunz_core::uci::{legal_uci_moves, move_to_uci, parse_uci_move};
 
 fn persona_from_str(s: &str) -> Persona {
@@ -352,7 +352,7 @@ impl Server {
         let game = games.get_mut(&params.0.game_id).ok_or("unknown game_id")?;
         let persona = persona_from_str(&params.0.persona);
         let turn = game.turn;
-        let cfg = SearchConfig { persona, add_randomness: false, deadline: None };
+        let cfg = SearchConfig { persona, mode: SearchMode::Full, add_randomness: false, deadline: None };
         let result = get_best_move(game, turn, params.0.depth, &cfg, &|_m| 0.0);
         let uci = result.best_move.map(|m| move_to_uci(&game.board, m));
         Ok(Json(EngineMoveResp {
@@ -388,7 +388,7 @@ impl Server {
             } else {
                 (black_persona, params.0.black_depth)
             };
-            let cfg = SearchConfig { persona, add_randomness: false, deadline: None };
+            let cfg = SearchConfig { persona, mode: SearchMode::Full, add_randomness: false, deadline: None };
             let turn = game.turn;
             let search_result = get_best_move(&mut game, turn, depth, &cfg, &|_m| 0.0);
             let Some(best) = search_result.best_move else {

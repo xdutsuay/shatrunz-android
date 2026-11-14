@@ -14,7 +14,7 @@ use shatrunz_core::eval::hce::Persona;
 use shatrunz_core::game::Game;
 use shatrunz_core::moves::{Move, MoveTarget, Square};
 use shatrunz_core::piece::PieceKind;
-use shatrunz_core::search::persona::{get_best_move, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
@@ -104,6 +104,8 @@ fn persona_search_matches_js_oracle() {
             for (base_depth, expected) in [(2u32, &results.depth2), (3u32, &results.depth3)] {
                 let cfg = SearchConfig {
                     persona,
+                    // JS parity: no search-only eval terms.
+                    mode: SearchMode::Parity,
                     add_randomness: false,
                     deadline: None,
                 };

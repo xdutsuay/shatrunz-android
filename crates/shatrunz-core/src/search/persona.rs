@@ -41,9 +41,23 @@ use crate::search::tt::{self, Bound};
 /// scores higher for the winner than one found deeper.
 pub const MATE_SCORE: f64 = 100_000.0;
 
+/// Which search the engine runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SearchMode {
+    /// The full engine: everything below plus the search-only improvements
+    /// that change scores (check extensions, check evasions in quiescence).
+    /// What the app plays with.
+    #[default]
+    Full,
+    /// Only the behaviour `frontend/ai.js` has, so fixed-depth results can
+    /// be compared with the JS search. Used by the JS↔Rust parity fixtures.
+    Parity,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct SearchConfig {
     pub persona: Persona,
+    pub mode: SearchMode,
     /// Not implemented — see module doc. Always behaves as `false`.
     pub add_randomness: bool,
     /// `None` = single fixed-depth search (`budgetMs <= 0` in JS). `Some`
@@ -206,6 +220,11 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
     }
+    // In check there is no "standing pat": the side to move must answer the
+    // check, and a capture-only search would miss that it can't (mate).
+    if cfg.mode == SearchMode::Full && q_depth > 0 && is_king_in_check(&game.board, color) {
+        return quiescence_evasions(game, alpha, beta, color, cfg, q_depth);
+    }
     let stand = evaluate_with_randomness(&game.board, color, cfg);
     if stand >= beta {
         return beta;
@@ -241,6 +260,31 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
     alpha
 }
 
+/// Quiescence node in check: search every legal reply (not only captures).
+/// No legal reply is checkmate.
+fn quiescence_evasions(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig, q_depth: i32) -> f64 {
+    let moves = game.legal_moves(color);
+    if moves.is_empty() {
+        return -MATE_SCORE;
+    }
+    let mut best = f64::NEG_INFINITY;
+    for m in moves {
+        game.make_move(m.from, m.to);
+        let score = -quiescence(game, -beta, -alpha, color.opposite(), cfg, q_depth - 1);
+        game.undo_move();
+        if score > best {
+            best = score;
+        }
+        if score > alpha {
+            alpha = score;
+        }
+        if alpha >= beta || deadline_passed(cfg) {
+            break;
+        }
+    }
+    best
+}
+
 /// Mirrors `alphabeta` (ai.js:145-177), with one deliberate divergence:
 /// a node with no legal moves returns a mate score (checkmate) or 0
 /// (stalemate). The JS original fell back to the static eval there, so the
@@ -260,13 +304,20 @@ fn alphabeta(
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
     }
+    // Check extension: a position in check is never a quiet leaf. Searching
+    // it one ply deeper lets the engine see mates and forced sequences
+    // that a check at the horizon would otherwise hide.
+    let in_check = cfg.mode == SearchMode::Full && is_king_in_check(&game.board, color);
+    let depth = if in_check && ply < MAX_PLY / 2 { depth + 1 } else { depth };
     if depth == 0 {
         return quiescence(game, alpha, beta, color, cfg, 4);
     }
 
     // Transposition table: a result from an earlier visit at least this
     // deep either settles the node or tells us which move to try first.
-    let key = tt::hash(&game.board, color, cfg.persona);
+    // Parity and Full searches score differently: keep their entries apart.
+    let mode_salt = if cfg.mode == SearchMode::Parity { 0x9E37_79B9_7F4A_7C15 } else { 0 };
+    let key = tt::hash(&game.board, color, cfg.persona) ^ mode_salt;
     let hit = tt::probe(key);
     if let Some(e) = hit {
         if e.depth as i32 >= depth {

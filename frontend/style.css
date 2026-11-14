@@ -492,9 +492,8 @@ body {
     to { transform: translateZ(0) scale(1.08); filter: brightness(1); }
 }
 
-.square.last-move .piece {
-    animation: movedPiecePulse 140ms ease-out;
-}
+/* The moved piece now slides in (BoardView._animateLastMove). The old
+   pulse re-fired on every re-render (e.g. tapping a piece), so it's gone. */
 
 .white-piece {
     color: #fff;

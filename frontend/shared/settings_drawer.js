@@ -13,18 +13,42 @@ export const DrawerKeys = {
     animations: 'shatrunz_animations',
     engineLine: 'shatrunz_show_engine_line',
     captured: 'shatrunz_show_captured',
+    // #34: DroidFish-style board preferences (DroidFish key names in comments).
+    squareLabels: 'shatrunz_square_labels',     // drawSquareLabels
+    highlightLastMove: 'shatrunz_highlight_last', // highlightLastMove
+    blindMode: 'shatrunz_blind_mode',           // blindMode
+    autoSwapSides: 'shatrunz_auto_swap_sides',  // autoSwapSides ("Flip Board: Auto")
+    moveSound: 'shatrunz_move_sound',           // moveSoundEnabled
+    vibrate: 'shatrunz_vibrate',                // vibrateEnabled
 };
 
-/** Toggles default to on; only an explicit '0' turns one off. */
+/** Toggles off by default (everything else defaults on). */
+const DEFAULT_OFF = new Set([DrawerKeys.blindMode, DrawerKeys.autoSwapSides, DrawerKeys.moveSound, DrawerKeys.vibrate]);
+
+/** '1' = on, '0' = off, unset = the toggle's default. */
 export function drawerToggle(key) {
-    try { return localStorage.getItem(key) !== '0'; } catch { return true; }
+    try {
+        const v = localStorage.getItem(key);
+        return v === null ? !DEFAULT_OFF.has(key) : v !== '0';
+    } catch { return !DEFAULT_OFF.has(key); }
 }
+
+const TOGGLE_IDS = [
+    [DrawerKeys.animations, 'drawer-animations'], [DrawerKeys.engineLine, 'drawer-engine-line'],
+    [DrawerKeys.captured, 'drawer-captured'], [DrawerKeys.squareLabels, 'drawer-square-labels'],
+    [DrawerKeys.highlightLastMove, 'drawer-highlight-last'], [DrawerKeys.blindMode, 'drawer-blind'],
+    [DrawerKeys.autoSwapSides, 'drawer-auto-swap'], [DrawerKeys.moveSound, 'drawer-move-sound'],
+    [DrawerKeys.vibrate, 'drawer-vibrate'],
+];
 
 const THINK_TIMES = [[0, 'Auto (by strength)'], [250, '0.25 s'], [500, '0.5 s'], [1000, '1 s'], [2000, '2 s'], [5000, '5 s']];
 
 function applyBodyToggles() {
     document.body.classList.toggle('hide-engine-line', !drawerToggle(DrawerKeys.engineLine));
     document.body.classList.toggle('hide-captured', !drawerToggle(DrawerKeys.captured));
+    document.body.classList.toggle('hide-square-labels', !drawerToggle(DrawerKeys.squareLabels));
+    document.body.classList.toggle('no-last-move-highlight', !drawerToggle(DrawerKeys.highlightLastMove));
+    document.body.classList.toggle('blindfold', drawerToggle(DrawerKeys.blindMode));
 }
 
 function proxy(id, value, events = ['input', 'change']) {
@@ -66,7 +90,7 @@ export function initSettingsDrawer() {
         levelOut.textContent = String(pageLevel);
         think.value = String(THINK_TIMES.some(([v]) => v === getSettings().thinkTimeMs) ? getSettings().thinkTimeMs : 0);
         theme.value = document.getElementById('board-theme')?.value || 'classic';
-        for (const [key, id] of [[DrawerKeys.animations, 'drawer-animations'], [DrawerKeys.engineLine, 'drawer-engine-line'], [DrawerKeys.captured, 'drawer-captured']]) {
+        for (const [key, id] of TOGGLE_IDS) {
             document.getElementById(id).checked = drawerToggle(key);
         }
         document.getElementById('drawer-flip').setAttribute('aria-pressed',
@@ -95,10 +119,11 @@ export function initSettingsDrawer() {
         document.getElementById('board-flip')?.click();
         sync();
     });
-    for (const [key, id] of [[DrawerKeys.animations, 'drawer-animations'], [DrawerKeys.engineLine, 'drawer-engine-line'], [DrawerKeys.captured, 'drawer-captured']]) {
+    for (const [key, id] of TOGGLE_IDS) {
         document.getElementById(id).addEventListener('change', (e) => {
             localStorage.setItem(key, e.target.checked ? '1' : '0');
             applyBodyToggles();
+            window.dispatchEvent(new Event('shatrunz:settings')); // e.g. auto-flip re-render
         });
     }
     // Start position (#30): validated by the Rust rules before it's saved.

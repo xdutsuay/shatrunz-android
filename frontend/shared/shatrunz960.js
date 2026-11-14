@@ -1,8 +1,8 @@
 /**
  * Shatrunz960 (#31): Fischer-random-style starts for the 9x9 board.
  *
- * Adapted from chessprogramming.org "Chess960" and "Chess960 Start Positions"
- * (Scharnagl numbering). The back rank holds R R N N B B Q K Z, and:
+ * Adapted from chessprogramming.org "Chess960" (incl. its Scharnagl-style
+ * position numbering). The back rank holds R R N N B B Q K Z, and:
  *   - bishops on opposite colours: one on an even file (a,c,e,g,i, 5 squares),
  *     one on an odd file (b,d,f,h, 4 squares);
  *   - the king stands between the two rooks;

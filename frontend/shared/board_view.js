@@ -3,7 +3,8 @@ import { Rules } from '../rules.js';
 import { DrawerKeys, drawerToggle } from './settings_drawer.js';
 
 export class BoardView {
-    constructor({ boardEl, getGame, getSelection, onSquareClick, isTraining, isFlipped = () => false }) {
+    constructor({ boardEl, getGame, getSelection, onSquareClick, isTraining, isFlipped = () => false, onNewMove = null }) {
+        this.onNewMove = onNewMove;
         this.boardEl = boardEl;
         this.getGame = getGame;
         this.getSelection = getSelection;
@@ -108,6 +109,7 @@ export class BoardView {
         const prev = this._renderedPlies;
         this._renderedPlies = plies;
         if (prev === null || plies !== prev + 1) return;
+        this.onNewMove?.(game.moveHistory[plies - 1]);
         if (typeof window === 'undefined' || !window.matchMedia) return;
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         if (!drawerToggle(DrawerKeys.animations)) return;

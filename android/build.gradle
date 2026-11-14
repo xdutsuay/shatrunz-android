@@ -13,7 +13,13 @@ tasks.register('buildShatrunzWasm', Exec) {
 
 tasks.register('syncWebAssets', Sync) {
     dependsOn tasks.named('buildShatrunzWasm')
-    from new File(repositoryRoot, 'frontend')
+    from(new File(repositoryRoot, 'frontend')) {
+        // Build-only outputs the app never loads: the Node.js wasm build used
+        // by `npm test`, TypeScript typings, and wasm-pack's npm metadata.
+        exclude 'pkg-node/**'
+        exclude '**/*.d.ts'
+        exclude 'pkg/package.json', 'pkg/.gitignore'
+    }
     into new File(project(':app').projectDir, 'src/main/assets/www')
 }
 

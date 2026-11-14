@@ -1,4 +1,5 @@
 import { COLORS } from './constants.js';
+import { gameOverHeadline } from './shared/game_over.js';
 import { Rules } from './rules.js';
 import { AIPlayer } from './ai.js';
 import { PGNManager } from './pgn.js';
@@ -400,6 +401,14 @@ function setupEventListeners() {
     });
     document.getElementById('btn-undo')?.addEventListener('click', () => modeController.onUndo());
     document.getElementById('reset-game')?.addEventListener('click', requestNewGame);
+    document.getElementById('game-over-rematch')?.addEventListener('click', () => {
+        document.getElementById('game-over-card').hidden = true;
+        requestNewGame();
+    });
+    document.getElementById('game-over-review')?.addEventListener('click', () => {
+        gameOverDismissedAt = session.uciMoveHistory.length;
+        document.getElementById('game-over-card').hidden = true;
+    });
     document.getElementById('ai-level')?.addEventListener('change', handleLevelChange);
     document.getElementById('computer-side')?.addEventListener('change', (event) => {
         localStorage.setItem('shatrunz_computer_side', event.target.value === 'white' ? 'white' : 'black');
@@ -615,10 +624,29 @@ function personaKeyForDisplay(game) {
     return 'material';
 }
 
+// The card is dismissed per finished game: "See board" hides it until the
+// next game ends, keyed by how many moves the finished game had.
+let gameOverDismissedAt = -1;
+
+function updateGameOverCard(status) {
+    const card = document.getElementById('game-over-card');
+    if (!card) return;
+    const plies = session.uciMoveHistory.length;
+    const show = status.over && !replayController && !reviewState && gameOverDismissedAt !== plies;
+    if (!status.over) gameOverDismissedAt = -1;
+    if (show) {
+        const { title, reason } = gameOverHeadline(status);
+        document.getElementById('game-over-title').textContent = title;
+        document.getElementById('game-over-reason').textContent = reason;
+    }
+    card.hidden = !show;
+}
+
 function updateStatus() {
     const game = getGame();
     const status = game.checkStatus();
     statusEl.innerText = status.msg;
+    updateGameOverCard(status);
     const materialCp = game.getScore();
     const evalEl = document.getElementById('eval-display');
     const engineEl = document.getElementById('engine-status');

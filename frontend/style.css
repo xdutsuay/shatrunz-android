@@ -1321,3 +1321,32 @@ body.android-mvp .move-nav-bar .icon-btn:disabled {
 }
 body.android-board-green .square.light { background: #e9edcc; }
 body.android-board-green .square.dark { background: #769656; }
+
+/* Game-over card: a clear result over the board instead of a small status
+   chip, with the next action (Rematch) one tap away. */
+.board-area { position: relative; }
+.game-over-card {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    min-width: min(78%, 320px);
+    padding: 20px 22px 18px;
+    border-radius: 14px;
+    background: rgba(24, 24, 22, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+    text-align: center;
+    animation: game-over-in 180ms ease-out;
+}
+.game-over-card[hidden] { display: none; }
+.game-over-title { font-size: 1.5rem; font-weight: 750; color: #fff; }
+.game-over-reason { margin-top: 4px; font-size: 0.95rem; color: rgba(255, 255, 255, 0.72); }
+.game-over-actions { display: flex; gap: 10px; margin-top: 16px; }
+.game-over-actions .btn { flex: 1; min-height: 44px; }
+@keyframes game-over-in {
+    from { opacity: 0; transform: translate(-50%, -46%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+@media (prefers-reduced-motion: reduce) { .game-over-card { animation: none; } }

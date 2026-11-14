@@ -24,10 +24,58 @@ function getWorker() {
     }
     try {
         _worker = new Worker(new URL('./ai_worker.js', import.meta.url), { type: 'module' });
+        _worker.addEventListener('message', onWorkerMessage);
+        _worker.addEventListener('error', onWorkerError);
         return _worker;
     } catch {
         _workerBroken = true;
         return null;
+    }
+}
+
+let _nextId = 1;
+/** id -> { resolve, reject } for searches the worker has not answered yet. */
+const _pending = new Map();
+
+function abortError() {
+    const err = new Error('search cancelled');
+    err.name = 'AbortError';
+    return err;
+}
+
+export function isAbortError(err) {
+    return err?.name === 'AbortError';
+}
+
+function onWorkerMessage(ev) {
+    const data = ev.data || {};
+    const entry = _pending.get(data.id);
+    // Results for cancelled or unknown requests are dropped, never handed to
+    // whichever search happens to be waiting now.
+    if (!entry) return;
+    _pending.delete(data.id);
+    if (data.type === 'result') entry.resolve(data.result);
+    else entry.reject(new Error(data.message || 'worker error'));
+}
+
+function onWorkerError(err) {
+    _workerBroken = true;
+    for (const entry of _pending.values()) entry.reject(err);
+    _pending.clear();
+}
+
+/**
+ * Stop any in-flight search right away. The worker is single-threaded and
+ * cannot be interrupted mid-search, so it is terminated and lazily
+ * recreated on the next search. Pending promises reject with AbortError.
+ */
+export function cancelWorkerSearch() {
+    if (_pending.size === 0) return;
+    for (const entry of _pending.values()) entry.reject(abortError());
+    _pending.clear();
+    if (_worker) {
+        _worker.terminate();
+        _worker = null;
     }
 }
 
@@ -43,32 +91,10 @@ export function searchViaWorker(game, searchOpts, _onSearchUpdate) {
         return Promise.reject(new Error('ai worker unavailable'));
     }
 
+    const id = _nextId++;
     const uciMoves = uciMovesFromGame(game);
     return new Promise((resolve, reject) => {
-        const onMsg = (ev) => {
-            const data = ev.data || {};
-            if (data.type === 'error') {
-                cleanup();
-                _workerBroken = true;
-                reject(new Error(data.message || 'worker error'));
-                return;
-            }
-            if (data.type === 'result') {
-                cleanup();
-                resolve(data.result);
-            }
-        };
-        const onErr = (err) => {
-            cleanup();
-            _workerBroken = true;
-            reject(err);
-        };
-        const cleanup = () => {
-            worker.removeEventListener('message', onMsg);
-            worker.removeEventListener('error', onErr);
-        };
-        worker.addEventListener('message', onMsg);
-        worker.addEventListener('error', onErr);
-        worker.postMessage({ type: 'search', uciMoves, opts: searchOpts });
+        _pending.set(id, { resolve, reject });
+        worker.postMessage({ type: 'search', id, uciMoves, opts: searchOpts });
     });
 }

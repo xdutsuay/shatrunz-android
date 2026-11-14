@@ -8,7 +8,7 @@ import { fetchPolicyBonuses, isPolicyNetEnabled } from './shared/policy_net.js';
 import { moveToUCI, parseUCIMove } from './shared/uci.js';
 import { evaluateForSearch } from './shared/eval_core.js';
 import { isWasmReady, getWasm } from './shared/wasm_boot.js';
-import { searchViaWorker } from './workers/ai_worker_client.js';
+import { searchViaWorker, isAbortError } from './workers/ai_worker_client.js';
 
 // --- AI Strategy Base Class ---
 class AIStrategy {
@@ -265,7 +265,9 @@ export class AIPlayer {
         let result;
         try {
             result = await searchViaWorker(game, searchOpts, onSearchUpdate);
-        } catch {
+        } catch (err) {
+            // Cancelled by Stop/Undo/New Game: don't redo the search on the UI thread.
+            if (isAbortError(err)) return null;
             const { searchBestMove } = getWasm();
             result = searchBestMove(game._wasm, searchOpts);
         }

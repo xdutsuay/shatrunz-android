@@ -1,3 +1,5 @@
+import { cancelWorkerSearch } from '../workers/ai_worker_client.js';
+
 /** Base mode controller — subclasses override lifecycle hooks. */
 export class ModeController {
     constructor(ctx) {
@@ -52,6 +54,8 @@ export class ModeController {
 
     cancelPendingAiTimers() {
         this._aiGen++;
+        cancelWorkerSearch();
+        if (this.ctx?.thinkEl) this.ctx.thinkEl.innerText = '';
         if (this._aiMoveTimer != null) {
             clearTimeout(this._aiMoveTimer);
             this._aiMoveTimer = null;

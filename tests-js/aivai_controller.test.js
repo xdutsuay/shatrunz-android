@@ -53,3 +53,44 @@ test('strategyFromSelect reads DOM when elements exist', () => {
         global.document = prev;
     }
 });
+
+test('a move that arrives after Stop is not played', async () => {
+    const { AivaiModeController } = await import('../frontend/modes/aivai.js');
+    const prevDoc = global.document;
+    global.document = { getElementById: () => null };
+    let release;
+    const slowAi = {
+        level: 1,
+        brain: { recordMove() {} },
+        getBestMove: () => new Promise((r) => { release = r; }),
+    };
+    let played = 0;
+    const ctx = {
+        game: { turn: COLORS.WHITE, gameOver: false, checkStatus: () => ({ over: false }) },
+        session: { uciMoveHistory: [], executeAndRecordMove: () => { played++; return {}; } },
+        boardView: { render() {} },
+        thinkEl: { innerText: '' },
+        statusEl: { innerText: '' },
+        ai1: slowAi,
+        ai2: slowAi,
+        syncAutoButtons() {},
+        refreshUi() {},
+        updateMoveTime() {},
+        maybeExplainMove() {},
+        onGameEnd() {},
+    };
+    try {
+        const mc = new AivaiModeController(ctx);
+        mc.autoRunning = true;
+        const pending = mc.triggerAiMove();
+        await new Promise((r) => setTimeout(r, 40)); // past the pre-search yield
+        assert.equal(typeof release, 'function', 'search should have started');
+        mc.stopAuto();
+        release({ from: { r: 7, c: 4 }, to: { r: 6, c: 4 } });
+        await pending;
+        assert.equal(played, 0, 'stale move must be discarded');
+        assert.equal(ctx.thinkEl.innerText, '');
+    } finally {
+        global.document = prevDoc;
+    }
+});

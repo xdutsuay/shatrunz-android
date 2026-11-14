@@ -167,6 +167,11 @@ export class PvaiModeController extends ModeController {
             console.error('PvAI move failed:', err);
         }
 
+        // Stop / Undo / New Game while we were thinking: this result belongs
+        // to a position that no longer exists. Whoever cancelled already reset
+        // the in-flight state (and may have started a new search), so leave it.
+        if (!this.isAiGenerationCurrent(gen)) return;
+
         thinkEl.innerText = '';
         this.aiMoveInFlight = false;
 

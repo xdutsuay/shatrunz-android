@@ -991,7 +991,10 @@ body.android-mvp .engine-pv-panel { display: none; }
 body.android-mvp .move-explanation { min-height: 0; }
 body.android-mvp .android-ai-level-group { display: none; }
 body.android-mvp .android-ai-level-group input { width: 100%; }
-body.android-mvp.mode-hvc .android-ai-level-group { display: block; }
+body.android-mvp.mode-hvc .android-ai-level-group,
+body.android-mvp.mode-cvc .android-ai-level-group { display: block; }
+.ai-level-hint { display: block; min-height: 1em; margin-top: 4px; font-size: 0.72rem; color: var(--text-dim); }
+.ai-level-hint:empty { display: none; }
 body.android-mvp .action-buttons,
 body.android-mvp .ai-controls { display: flex; gap: 8px; }
 body.android-mvp .action-buttons .btn,

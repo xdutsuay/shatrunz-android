@@ -1,6 +1,7 @@
 import { COLORS } from '../constants.js';
 import { MODES } from '../mode_logic.js';
 import { BackendAPI } from '../api.js';
+import { isOfflineApp } from './platform.js';
 
 export { brainNameFor, personaBrainName, readPersonaStatsFromStorage } from './persona.js';
 
@@ -46,6 +47,10 @@ export async function persistGameAndBrains({
     currentAI,
     mode,
 }) {
+    // The Android app has no backend: the PGN and brains are already in
+    // localStorage, and these POSTs would only hit the offline-policy 403.
+    if (isOfflineApp()) return;
+
     const saved = pgnManager.getGame(0);
     if (!saved) return;
 

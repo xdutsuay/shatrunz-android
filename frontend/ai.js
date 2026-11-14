@@ -8,6 +8,7 @@ import { fetchPolicyBonuses, isPolicyNetEnabled } from './shared/policy_net.js';
 import { moveToUCI, parseUCIMove } from './shared/uci.js';
 import { evaluateForSearch } from './shared/eval_core.js';
 import { isWasmReady, getWasm } from './shared/wasm_boot.js';
+import { repetitionPenalty, seenCountAfter } from './shared/repetition.js';
 import { searchViaWorker, isAbortError } from './workers/ai_worker_client.js';
 
 // --- AI Strategy Base Class ---
@@ -234,6 +235,8 @@ export class AIPlayer {
         if (moves.length === 0) return null;
 
         const rootBonuses = {};
+        const material = game.getScore?.() ?? 0; // white-positive
+        const moverMaterial = color === COLORS.WHITE ? material : -material;
         for (const move of moves) {
             const pieceBefore = game.board[move.from.r][move.from.c];
             const uci = pieceBefore ? moveToUCI(move.from, move.to, pieceBefore) : null;
@@ -242,6 +245,7 @@ export class AIPlayer {
             let bonus = this.brain.getBonus(gameHash, moveStr) * 0.5;
             bonus += openingBookBonus(this.brain, gameHash, moveStr, game);
             bonus += this.brain.getPositionValue(gameHash) * 0.2;
+            bonus += repetitionPenalty(seenCountAfter(game, uci), moverMaterial);
             rootBonuses[uci] = bonus;
         }
 

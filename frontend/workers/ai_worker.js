@@ -26,10 +26,11 @@ self.onmessage = async (ev) => {
         const m = await ensureWasm();
         const game = m.WasmGame.fromUciMoves(msg.uciMoves || []);
         const result = m.searchBestMove(game, msg.opts || {});
-        self.postMessage({ type: 'result', result });
+        self.postMessage({ type: 'result', id: msg.id, result });
     } catch (err) {
         self.postMessage({
             type: 'error',
+            id: msg.id,
             message: err?.message || String(err),
         });
     }

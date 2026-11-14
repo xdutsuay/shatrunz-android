@@ -154,7 +154,13 @@ impl Game {
             self.board.set(to.r, to.c, Some(promoted));
         }
 
-        if to.is_castling {
+        // UCI writes castling as the king's two-square move ("e1g1") with no
+        // flag. A king never moves two files otherwise, so a two-file king
+        // move along its rank *is* castling, however the move reached us
+        // (UI click, UCI replay in the AI worker, saved-game restore, MCP).
+        let is_castling = to.is_castling
+            || (p.kind == PieceKind::King && from.r == to.r && from.c.abs_diff(to.c) == 2);
+        if is_castling {
             let rank = from.r;
             let is_kingside = to.c > from.c;
             let rook_from_col = if is_kingside { 8 } else { 0 };

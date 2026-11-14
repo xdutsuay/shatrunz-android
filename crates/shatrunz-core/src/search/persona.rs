@@ -113,6 +113,85 @@ fn count_node() {
     NODES.with(|n| n.set(n.get() + 1));
 }
 
+const MAX_PLY: usize = 64;
+
+/// Move-ordering memory for one `get_best_move` call.
+struct Heuristics {
+    /// Two quiet moves per ply that recently caused a beta cutoff.
+    killers: [[Option<Move>; 2]; MAX_PLY],
+    /// `history[from][to]`: how often a quiet move cut off, weighted by depth².
+    history: Vec<i32>,
+}
+
+thread_local! {
+    static HEUR: std::cell::RefCell<Heuristics> = std::cell::RefCell::new(Heuristics {
+        killers: [[None; 2]; MAX_PLY],
+        history: vec![0; 81 * 81],
+    });
+}
+
+fn sq(r: usize, c: usize) -> usize {
+    r * crate::board::BOARD_SIZE + c
+}
+
+fn reset_heuristics() {
+    HEUR.with(|h| {
+        let mut h = h.borrow_mut();
+        h.killers = [[None; 2]; MAX_PLY];
+        h.history.iter_mut().for_each(|x| *x = 0);
+    });
+}
+
+/// Value of the piece `m` captures, or `None` for a quiet move.
+fn victim(board: &Board, m: Move, color: Color) -> Option<i32> {
+    match board.get(m.to.r, m.to.c) {
+        Some(t) if t.color != color => Some(t.kind.weight()),
+        _ => None,
+    }
+}
+
+/// MVV-LVA: most valuable victim first, cheapest attacker breaking ties.
+fn capture_key(board: &Board, m: Move, v: i32) -> i32 {
+    let attacker = board.get(m.from.r, m.from.c).map_or(0, |p| p.kind.weight().min(1000));
+    100_000 + 10 * v - attacker
+}
+
+/// Searches the moves most likely to cause a cutoff first: captures
+/// (MVV-LVA), then this ply's killers, then quiet moves by history score.
+/// Alpha-beta returns the same exact score whatever the order; a good order
+/// just proves the other moves irrelevant sooner. The sort is stable, so
+/// ties keep the generator's order.
+fn order_moves(board: &Board, moves: &mut [Move], color: Color, ply: usize) {
+    HEUR.with(|h| {
+        let h = h.borrow();
+        let killers = h.killers[ply.min(MAX_PLY - 1)];
+        moves.sort_by_cached_key(|&m| {
+            let key = match victim(board, m, color) {
+                Some(v) => capture_key(board, m, v),
+                None if killers[0] == Some(m) => 90_000,
+                None if killers[1] == Some(m) => 89_000,
+                None => h.history[sq(m.from.r, m.from.c) * 81 + sq(m.to.r, m.to.c)].min(80_000),
+            };
+            std::cmp::Reverse(key)
+        });
+    });
+}
+
+/// A quiet move caused a beta cutoff: remember it as a killer for this ply
+/// and bump its history score.
+fn record_cutoff(m: Move, ply: usize, depth: i32) {
+    HEUR.with(|h| {
+        let mut h = h.borrow_mut();
+        let k = &mut h.killers[ply.min(MAX_PLY - 1)];
+        if k[0] != Some(m) {
+            k[1] = k[0];
+            k[0] = Some(m);
+        }
+        let i = sq(m.from.r, m.from.c) * 81 + sq(m.to.r, m.to.c);
+        h.history[i] = (h.history[i] + depth * depth).min(80_000);
+    });
+}
+
 fn deadline_passed(cfg: &SearchConfig) -> bool {
     matches!(cfg.deadline, Some(dl) if Instant::now() >= dl)
 }
@@ -134,14 +213,16 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
         return alpha;
     }
 
-    let moves = game.legal_moves(color);
-    for m in moves {
+    // Captures only, most valuable victim first.
+    let mut caps: Vec<(i32, Move)> = game
+        .legal_moves(color)
+        .into_iter()
+        .filter_map(|m| victim(&game.board, m, color).map(|v| (capture_key(&game.board, m, v), m)))
+        .collect();
+    caps.sort_by_key(|&(k, _)| std::cmp::Reverse(k));
+    for (_, m) in caps {
         if deadline_passed(cfg) {
             break;
-        }
-        let is_capture = matches!(game.board.get(m.to.r, m.to.c), Some(t) if t.color != color);
-        if !is_capture {
-            continue;
         }
         game.make_move(m.from, m.to);
         let score = -quiescence(game, -beta, -alpha, color.opposite(), cfg, q_depth - 1);
@@ -161,7 +242,16 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
 /// (stalemate). The JS original fell back to the static eval there, so the
 /// AI could not tell checkmate from any other position and never mated a
 /// lone king. The JS search is now only a no-wasm fallback.
-fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig) -> f64 {
+#[allow(clippy::too_many_arguments)]
+fn alphabeta(
+    game: &mut Game,
+    depth: i32,
+    ply: usize,
+    mut alpha: f64,
+    beta: f64,
+    color: Color,
+    cfg: &SearchConfig,
+) -> f64 {
     count_node();
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
@@ -170,7 +260,7 @@ fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Colo
         return quiescence(game, alpha, beta, color, cfg, 4);
     }
 
-    let moves = game.legal_moves(color);
+    let mut moves = game.legal_moves(color);
     if moves.is_empty() {
         // No legal moves is a game end, not a quiet position: checkmate is
         // the worst possible result for the side to move, stalemate a draw.
@@ -181,10 +271,12 @@ fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Colo
         };
     }
 
+    order_moves(&game.board, &mut moves, color, ply);
     let mut max_eval = f64::NEG_INFINITY;
     for m in moves {
+        let quiet = victim(&game.board, m, color).is_none();
         game.make_move(m.from, m.to);
-        let eval_score = -alphabeta(game, depth - 1, -beta, -alpha, color.opposite(), cfg);
+        let eval_score = -alphabeta(game, depth - 1, ply + 1, -beta, -alpha, color.opposite(), cfg);
         game.undo_move();
 
         if eval_score > max_eval {
@@ -194,6 +286,9 @@ fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Colo
             alpha = eval_score;
         }
         if beta <= alpha {
+            if quiet {
+                record_cutoff(m, ply, depth);
+            }
             break;
         }
     }
@@ -244,6 +339,7 @@ fn search_one_depth(
         let mut score = -alphabeta(
             game,
             depth as i32 - 1,
+            1,
             f64::NEG_INFINITY,
             -alpha,
             color.opposite(),
@@ -295,6 +391,7 @@ pub fn get_best_move(
     root_bonus: &dyn Fn(Move) -> f64,
 ) -> SearchResult {
     NODES.with(|n| n.set(0));
+    reset_heuristics();
     let moves = game.legal_moves(color);
     if moves.is_empty() {
         return SearchResult {

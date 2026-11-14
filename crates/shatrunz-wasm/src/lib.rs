@@ -414,6 +414,7 @@ pub fn wasm_search_best_move(game: &mut WasmGame, opts: JsValue) -> Result<JsVal
         best_score: f64,
         second_score: f64,
         depth_reached: u32,
+        nodes: f64,
     }
     let uci = result
         .best_move
@@ -423,6 +424,7 @@ pub fn wasm_search_best_move(game: &mut WasmGame, opts: JsValue) -> Result<JsVal
         best_score: result.best_score,
         second_score: result.second_score,
         depth_reached: result.depth_reached,
+        nodes: result.nodes as f64,
     })
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }

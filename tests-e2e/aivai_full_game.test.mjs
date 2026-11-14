@@ -72,11 +72,15 @@ test('AI vs AI plays to a result without freezing the UI', { skip: !chrome && 'n
         await page.evaluate(() => {
             // Longest gap between 50 ms ticks = longest main-thread stall.
             window.__maxGap = 0;
+            window.__slides = 0;
             let last = performance.now();
             setInterval(() => {
                 const now = performance.now();
                 window.__maxGap = Math.max(window.__maxGap, now - last);
                 last = now;
+                // Piece slides (#27) run while the game plays at full speed.
+                window.__slides = Math.max(window.__slides,
+                    document.getAnimations().filter((a) => a.effect?.target?.classList?.contains('piece')).length);
             }, 50);
             document.getElementById('start-auto').click();
         });
@@ -90,12 +94,14 @@ test('AI vs AI plays to a result without freezing the UI', { skip: !chrome && 'n
             status: document.getElementById('status').innerText,
             moves: document.getElementById('move-list').innerText,
             maxGap: Math.round(window.__maxGap),
+            slides: window.__slides,
         }));
 
         assert.deepEqual(errors, [], 'no uncaught page errors');
         assert.match(result.status, /CHECKMATE|Draw|Stalemate|Adjudicated/, `game should end with a result, got "${result.status}"`);
         assert.doesNotMatch(result.status, /could not find a move|Illegal move/);
         assert.ok(result.maxGap < 1500, `UI thread stalled ${result.maxGap} ms`);
+        assert.ok(result.slides > 0, 'moved pieces should slide into place');
         console.log(`e2e: "${result.status}", longest UI stall ${result.maxGap} ms`);
     } finally {
         await browser.close();

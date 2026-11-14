@@ -7,6 +7,7 @@ import {
     ENGINE_PERSONAS,
     depthForLevel,
     PERSONA_C_NATIVE,
+    thinkTimeMsForLevel,
 } from './persona.js';
 
 let clockProvider = null;
@@ -60,9 +61,16 @@ function clockSearchOpts(turn) {
     return clockFieldsForSide(clock, turn, incrementMs);
 }
 
-function jsBudgetMs(turn) {
+/**
+ * Search budget for the local (wasm/JS) engine. Always > 0 so a move can
+ * never take unbounded time: clock-derived when clocks are on, otherwise
+ * the admin think-time override or the per-level default.
+ */
+export function jsBudgetMs(turn, level) {
     const s = getSettings();
-    if (!s.enableClocks || !clockProvider) return 0;
+    if (!s.enableClocks || !clockProvider) {
+        return s.thinkTimeMs > 0 ? s.thinkTimeMs : thinkTimeMsForLevel(level ?? s.aiLevel);
+    }
     const { clock, incrementMs } = clockProvider();
     const fields = clockFieldsForSide(clock, turn, incrementMs);
     return computeGoTimeMs({ ...fields, side: turn });
@@ -135,7 +143,7 @@ export async function getPvaiEngineMove({ game, uciMoveHistory, currentAI, perso
     }
     return currentAI.getBestMove(game, game.turn, false, {
         uciPrefix: uciMoveHistory,
-        budgetMs: jsBudgetMs(game.turn),
+        budgetMs: jsBudgetMs(game.turn, currentAI.level),
         onSearchUpdate,
     });
 }
@@ -155,7 +163,7 @@ export async function getMoveForTurn({
     const aiToUse = turn === COLORS.WHITE ? ai1 : ai2;
     return aiToUse.getBestMove(game, game.turn, false, {
         uciPrefix: uciMoveHistory,
-        budgetMs: jsBudgetMs(turn),
+        budgetMs: jsBudgetMs(turn, aiToUse.level),
         onSearchUpdate,
     });
 }

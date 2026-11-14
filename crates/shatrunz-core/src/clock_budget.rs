@@ -74,7 +74,12 @@ pub fn compute_go_time_ms(input: ClockBudgetInput) -> i64 {
 }
 
 /// Mirrors `clockFieldsForSide` (clock_budget.js:38-46).
-pub fn clock_fields_for_side(white_ms: i64, black_ms: i64, side: Color, increment_ms: i64) -> ClockBudgetInput {
+pub fn clock_fields_for_side(
+    white_ms: i64,
+    black_ms: i64,
+    side: Color,
+    increment_ms: i64,
+) -> ClockBudgetInput {
     ClockBudgetInput {
         wtime: white_ms.max(0),
         btime: black_ms.max(0),

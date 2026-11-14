@@ -327,6 +327,8 @@ async function refreshMlMetrics() {
 }
 
 export function initUI(initialMode = MODES.HVH) {
+    // Read-only hook for the settings drawer's "Copy current position".
+    window.__shatrunzGame = () => getGame();
     setClockProvider(() => ({
         clock,
         incrementMs: getClockSettings().incrementMs,
@@ -516,7 +518,7 @@ function enterReview(ply) {
     reviewState = {
         liveGame: session.game,
         liveUci,
-        controller: new ReplayStepController(liveUci),
+        controller: new ReplayStepController(liveUci, session.game.startFen),
     };
     reviewState.controller.stepTo(ply);
     session.game = reviewState.controller.game;
@@ -765,7 +767,7 @@ function restoreActiveGame(mode) {
     const saved = pgnManager.loadActiveGame(mode);
     if (!saved) return null;
 
-    const replay = replayGameFromUci(saved.uciMoves);
+    const replay = replayGameFromUci(saved.uciMoves, saved.startFen || null);
     if (replay.error || !replay.game) {
         console.warn('Discarding invalid saved game:', replay.error);
         pgnManager.clearActiveGame(mode);

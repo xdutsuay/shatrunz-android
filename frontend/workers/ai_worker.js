@@ -24,7 +24,8 @@ self.onmessage = async (ev) => {
     if (msg.type !== 'search') return;
     try {
         const m = await ensureWasm();
-        const game = m.WasmGame.fromUciMoves(msg.uciMoves || []);
+        // Rebuild from the game's own start (#30), never assume the standard setup.
+        const game = m.WasmGame.fromStartAndUciMoves(msg.startFen || null, msg.uciMoves || []);
         const result = m.searchBestMove(game, msg.opts || {});
         self.postMessage({ type: 'result', id: msg.id, result });
     } catch (err) {

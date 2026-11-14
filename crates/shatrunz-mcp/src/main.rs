@@ -24,8 +24,8 @@ use std::sync::Mutex;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
-use rmcp::{tool, tool_handler, tool_router, ServerHandler, ServiceExt};
 use rmcp::Json;
+use rmcp::{tool, tool_handler, tool_router, ServerHandler, ServiceExt};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,7 @@ use shatrunz_core::game::Game;
 use shatrunz_core::moves::Square;
 use shatrunz_core::phase::get_phase;
 use shatrunz_core::piece::Color;
-use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchConfig, SearchMode};
 use shatrunz_core::uci::{legal_uci_moves, move_to_uci, parse_uci_move};
 
 fn persona_from_str(s: &str) -> Persona {
@@ -68,7 +68,10 @@ fn parse_square(s: &str) -> Option<Square> {
     if !(0..9).contains(&r) {
         return None;
     }
-    Some(Square { r: r as usize, c: file })
+    Some(Square {
+        r: r as usize,
+        c: file,
+    })
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
@@ -248,8 +251,13 @@ impl Server {
         }
     }
 
-    #[tool(description = "Start a new game from startpos, optionally replaying UCI moves. Returns the game state (rule-bug detector: a bad `moves` list surfaces as an error here).")]
-    async fn new_game(&self, params: Parameters<NewGameRequest>) -> Result<Json<GameStateResp>, String> {
+    #[tool(
+        description = "Start a new game from startpos, optionally replaying UCI moves. Returns the game state (rule-bug detector: a bad `moves` list surfaces as an error here)."
+    )]
+    async fn new_game(
+        &self,
+        params: Parameters<NewGameRequest>,
+    ) -> Result<Json<GameStateResp>, String> {
         let mut game = Game::new();
         for uci in &params.0.moves {
             let (from, to) = parse_uci_move(uci).ok_or_else(|| format!("bad uci move: {uci}"))?;
@@ -264,19 +272,28 @@ impl Server {
     }
 
     #[tool(description = "Get the current state of a game by id.")]
-    async fn get_state(&self, params: Parameters<GameIdRequest>) -> Result<Json<GameStateResp>, String> {
+    async fn get_state(
+        &self,
+        params: Parameters<GameIdRequest>,
+    ) -> Result<Json<GameStateResp>, String> {
         let games = self.games.lock().unwrap();
         let game = games.get(&params.0.game_id).ok_or("unknown game_id")?;
         Ok(Json(game_state_resp(params.0.game_id, game)))
     }
 
     #[tool(description = "List legal moves (UCI) for a game, optionally restricted to one square.")]
-    async fn legal_moves(&self, params: Parameters<LegalMovesRequest>) -> Result<Json<LegalMovesResp>, String> {
+    async fn legal_moves(
+        &self,
+        params: Parameters<LegalMovesRequest>,
+    ) -> Result<Json<LegalMovesResp>, String> {
         let games = self.games.lock().unwrap();
         let game = games.get(&params.0.game_id).ok_or("unknown game_id")?;
         let all = game.legal_moves(game.turn);
         let moves: Vec<String> = match &params.0.square {
-            None => all.into_iter().map(|m| move_to_uci(&game.board, m)).collect(),
+            None => all
+                .into_iter()
+                .map(|m| move_to_uci(&game.board, m))
+                .collect(),
             Some(sq) => {
                 let from = parse_square(sq).ok_or_else(|| format!("bad square: {sq}"))?;
                 all.into_iter()
@@ -288,15 +305,22 @@ impl Server {
         Ok(Json(LegalMovesResp { moves }))
     }
 
-    #[tool(description = "Play a UCI move in a game. Illegal moves return {ok:false, error, legal_uci} instead of mutating state — the rule-bug detector.")]
-    async fn make_move(&self, params: Parameters<MakeMoveRequest>) -> Result<Json<MakeMoveResp>, String> {
+    #[tool(
+        description = "Play a UCI move in a game. Illegal moves return {ok:false, error, legal_uci} instead of mutating state — the rule-bug detector."
+    )]
+    async fn make_move(
+        &self,
+        params: Parameters<MakeMoveRequest>,
+    ) -> Result<Json<MakeMoveResp>, String> {
         let mut games = self.games.lock().unwrap();
         let game = games.get_mut(&params.0.game_id).ok_or("unknown game_id")?;
 
         let parsed = parse_uci_move(&params.0.uci);
         let legal = game.legal_moves(game.turn);
         let is_legal = match parsed {
-            Some((from, to)) => legal.iter().any(|m| m.from == from && m.to.r == to.r && m.to.c == to.c),
+            Some((from, to)) => legal
+                .iter()
+                .any(|m| m.from == from && m.to.r == to.r && m.to.c == to.c),
             None => false,
         };
 
@@ -305,14 +329,22 @@ impl Server {
                 ok: false,
                 state: None,
                 error: Some(format!("illegal move: {}", params.0.uci)),
-                legal_uci: Some(legal.into_iter().map(|m| move_to_uci(&game.board, m)).collect()),
+                legal_uci: Some(
+                    legal
+                        .into_iter()
+                        .map(|m| move_to_uci(&game.board, m))
+                        .collect(),
+                ),
             }));
         }
 
         let (from, to) = parsed.unwrap();
         // Recover the exact MoveTarget (with castling flag) from the legal list,
         // since parse_uci_move alone can't know a move is a castle.
-        let full = legal.into_iter().find(|m| m.from == from && m.to.r == to.r && m.to.c == to.c).unwrap();
+        let full = legal
+            .into_iter()
+            .find(|m| m.from == from && m.to.r == to.r && m.to.c == to.c)
+            .unwrap();
         game.execute_move(full.from, full.to);
         Ok(Json(MakeMoveResp {
             ok: true,
@@ -322,15 +354,24 @@ impl Server {
         }))
     }
 
-    #[tool(description = "Perft (node count at a fixed depth) from a game's current position — a correctness oracle for move generation.")]
+    #[tool(
+        description = "Perft (node count at a fixed depth) from a game's current position — a correctness oracle for move generation."
+    )]
     async fn perft(&self, params: Parameters<PerftRequest>) -> Result<Json<PerftResp>, String> {
         let mut games = self.games.lock().unwrap();
         let game = games.get_mut(&params.0.game_id).ok_or("unknown game_id")?;
-        Ok(Json(PerftResp { nodes: perft(game, params.0.depth) }))
+        Ok(Json(PerftResp {
+            nodes: perft(game, params.0.depth),
+        }))
     }
 
-    #[tool(description = "Evaluate a game's position with a persona's HCE breakdown (material/pst/mobility/pawns/capture/total) — an eval-critique surface.")]
-    async fn evaluate(&self, params: Parameters<EvaluateRequest>) -> Result<Json<EvaluateResp>, String> {
+    #[tool(
+        description = "Evaluate a game's position with a persona's HCE breakdown (material/pst/mobility/pawns/capture/total) — an eval-critique surface."
+    )]
+    async fn evaluate(
+        &self,
+        params: Parameters<EvaluateRequest>,
+    ) -> Result<Json<EvaluateResp>, String> {
         let games = self.games.lock().unwrap();
         let game = games.get(&params.0.game_id).ok_or("unknown game_id")?;
         let persona = persona_from_str(&params.0.persona);
@@ -346,13 +387,23 @@ impl Server {
         }))
     }
 
-    #[tool(description = "Ask the persona search engine for its best move at a fixed depth (no time budget, no randomness/bonuses).")]
-    async fn engine_move(&self, params: Parameters<EngineMoveRequest>) -> Result<Json<EngineMoveResp>, String> {
+    #[tool(
+        description = "Ask the persona search engine for its best move at a fixed depth (no time budget, no randomness/bonuses)."
+    )]
+    async fn engine_move(
+        &self,
+        params: Parameters<EngineMoveRequest>,
+    ) -> Result<Json<EngineMoveResp>, String> {
         let mut games = self.games.lock().unwrap();
         let game = games.get_mut(&params.0.game_id).ok_or("unknown game_id")?;
         let persona = persona_from_str(&params.0.persona);
         let turn = game.turn;
-        let cfg = SearchConfig { persona, mode: SearchMode::Full, add_randomness: false, deadline: None };
+        let cfg = SearchConfig {
+            persona,
+            mode: SearchMode::Full,
+            add_randomness: false,
+            deadline: None,
+        };
         let result = get_best_move(game, turn, params.0.depth, &cfg, &|_m| 0.0);
         let uci = result.best_move.map(|m| move_to_uci(&game.board, m));
         Ok(Json(EngineMoveResp {
@@ -362,8 +413,13 @@ impl Server {
         }))
     }
 
-    #[tool(description = "Self-play a full game between two persona/depth configs (no time budget). Generates fixture-quality data: result, move list, and position_key trace.")]
-    async fn self_play(&self, params: Parameters<SelfPlayRequest>) -> Result<Json<SelfPlayResp>, String> {
+    #[tool(
+        description = "Self-play a full game between two persona/depth configs (no time budget). Generates fixture-quality data: result, move list, and position_key trace."
+    )]
+    async fn self_play(
+        &self,
+        params: Parameters<SelfPlayRequest>,
+    ) -> Result<Json<SelfPlayResp>, String> {
         let mut game = Game::new();
         let white_persona = persona_from_str(&params.0.white_persona);
         let black_persona = persona_from_str(&params.0.black_persona);
@@ -388,7 +444,12 @@ impl Server {
             } else {
                 (black_persona, params.0.black_depth)
             };
-            let cfg = SearchConfig { persona, mode: SearchMode::Full, add_randomness: false, deadline: None };
+            let cfg = SearchConfig {
+                persona,
+                mode: SearchMode::Full,
+                add_randomness: false,
+                deadline: None,
+            };
             let turn = game.turn;
             let search_result = get_best_move(&mut game, turn, depth, &cfg, &|_m| 0.0);
             let Some(best) = search_result.best_move else {
@@ -401,7 +462,12 @@ impl Server {
             plies += 1;
         }
 
-        Ok(Json(SelfPlayResp { result, plies, moves, position_keys }))
+        Ok(Json(SelfPlayResp {
+            result,
+            plies,
+            moves,
+            position_keys,
+        }))
     }
 }
 
@@ -409,7 +475,10 @@ impl Server {
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("shatrunz-mcp", env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new(
+                "shatrunz-mcp",
+                env!("CARGO_PKG_VERSION"),
+            ))
             .with_instructions(
                 "ShatrunZ MCP: play/inspect/self-play the 9x9 Krishna chess variant \
                  in-process (no UCI round-trip). Start with new_game, then use \

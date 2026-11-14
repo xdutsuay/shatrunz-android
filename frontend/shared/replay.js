@@ -1,8 +1,13 @@
 import { Game } from '../game.js';
 import { parseUCIMove } from './uci.js';
 
-export function replayGameFromUci(uciMoves) {
-    const game = new Game();
+export function replayGameFromUci(uciMoves, startFen = null) {
+    let game;
+    try {
+        game = new Game({ fen: startFen });
+    } catch (e) {
+        return { game: null, uciMoveHistory: [], error: `Invalid start position: ${e?.message || e}` };
+    }
     const history = [];
 
     for (const uci of uciMoves) {

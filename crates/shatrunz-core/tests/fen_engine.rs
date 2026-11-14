@@ -13,7 +13,7 @@ fn start_fen_parses_board_and_stm() {
     assert_eq!(pos.halfmove_clock, 0);
     assert_eq!(pos.fullmove_number, 1);
     assert_eq!(pos.castling_rights, 0); // PGN header uses `-`
-    // Krishna on g-file for both sides
+                                        // Krishna on g-file for both sides
     assert!(pos.board.get(0, 6).is_some());
     assert!(pos.board.get(8, 6).is_some());
 }
@@ -30,7 +30,8 @@ fn new_position_round_trips_with_castling_rights() {
 
 #[test]
 fn parse_position_fen_line_splits_moves() {
-    let line = "position fen rnbqkbznr/ppppppppp/9/9/9/9/9/PPPPPPPPP/RNBQKBZNR w - - 0 1 moves e2e4 e7e5";
+    let line =
+        "position fen rnbqkbznr/ppppppppp/9/9/9/9/9/PPPPPPPPP/RNBQKBZNR w - - 0 1 moves e2e4 e7e5";
     let (fen, moves) = parse_position_fen_line(line).expect("split");
     assert_eq!(fen, START_FEN);
     assert_eq!(moves, vec!["e2e4", "e7e5"]);

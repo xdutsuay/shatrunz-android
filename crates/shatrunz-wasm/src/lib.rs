@@ -20,7 +20,7 @@ use shatrunz_core::moves::{CastlingSide, Move, MoveTarget, Square};
 use shatrunz_core::phase::{get_phase_for_game, Phase};
 use shatrunz_core::piece::Color;
 use shatrunz_core::rules;
-use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchConfig, SearchMode};
 use shatrunz_core::uci::{legal_uci_moves, move_to_uci, parse_uci_move};
 
 #[wasm_bindgen]
@@ -143,16 +143,14 @@ pub struct WasmGame {
 impl WasmGame {
     #[wasm_bindgen(constructor)]
     pub fn new() -> WasmGame {
-        WasmGame {
-            inner: Game::new(),
-        }
+        WasmGame { inner: Game::new() }
     }
 
     /// Replay UCI moves from startpos (same as `position startpos moves …`).
     #[wasm_bindgen(js_name = fromUciMoves)]
     pub fn from_uci_moves(moves: JsValue) -> Result<WasmGame, JsValue> {
-        let tokens: Vec<String> = serde_wasm_bindgen::from_value(moves)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let tokens: Vec<String> =
+            serde_wasm_bindgen::from_value(moves).map_err(|e| JsValue::from_str(&e.to_string()))?;
         let mut g = Game::new();
         for tok in tokens {
             let (from, to) = parse_uci_move(&tok)
@@ -162,6 +160,46 @@ impl WasmGame {
             }
         }
         Ok(WasmGame { inner: g })
+    }
+
+    /// Game from a custom start (`placement side`), validated; `Err` text
+    /// explains what's wrong so the UI can show it.
+    #[wasm_bindgen(js_name = fromStartFen)]
+    pub fn from_start_fen(fen: &str) -> Result<WasmGame, JsValue> {
+        Game::from_start_fen(fen)
+            .map(|inner| WasmGame { inner })
+            .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Like `fromUciMoves`, but replaying from `startFen` when given. The AI
+    /// worker and saved-game restore must use this: replaying a custom
+    /// game from the standard setup gives a different position (the same
+    /// class of bug as the castling replay fixed in #25).
+    #[wasm_bindgen(js_name = fromStartAndUciMoves)]
+    pub fn from_start_and_uci_moves(
+        start_fen: Option<String>,
+        moves: JsValue,
+    ) -> Result<WasmGame, JsValue> {
+        let tokens: Vec<String> =
+            serde_wasm_bindgen::from_value(moves).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let mut g = match start_fen.as_deref().filter(|f| !f.is_empty()) {
+            Some(f) => Game::from_start_fen(f).map_err(|e| JsValue::from_str(&e))?,
+            None => Game::new(),
+        };
+        for tok in tokens {
+            let (from, to) = parse_uci_move(&tok)
+                .ok_or_else(|| JsValue::from_str(&format!("bad uci: {tok}")))?;
+            if !g.execute_move(from, to) {
+                return Err(JsValue::from_str(&format!("illegal: {tok}")));
+            }
+        }
+        Ok(WasmGame { inner: g })
+    }
+
+    /// The custom start this game began from, if any.
+    #[wasm_bindgen(js_name = startFen)]
+    pub fn start_fen(&self) -> Option<String> {
+        self.inner.start_fen.clone()
     }
 
     /// 9×9 board as JS nested arrays of `{type,color}` / `null`.
@@ -195,7 +233,12 @@ impl WasmGame {
     }
 
     #[wasm_bindgen(js_name = executeMove)]
-    pub fn execute_move(&mut self, from_r: usize, from_c: usize, to: JsValue) -> Result<bool, JsValue> {
+    pub fn execute_move(
+        &mut self,
+        from_r: usize,
+        from_c: usize,
+        to: JsValue,
+    ) -> Result<bool, JsValue> {
         let t: JsMoveTarget =
             serde_wasm_bindgen::from_value(to).map_err(|e| JsValue::from_str(&e.to_string()))?;
         let side = match t.side.as_deref() {
@@ -209,9 +252,13 @@ impl WasmGame {
             is_castling: t.is_castling,
             castling_side: side,
         };
-        Ok(self
-            .inner
-            .execute_move(Square { r: from_r, c: from_c }, target))
+        Ok(self.inner.execute_move(
+            Square {
+                r: from_r,
+                c: from_c,
+            },
+            target,
+        ))
     }
 
     #[wasm_bindgen(js_name = executeUci)]
@@ -291,11 +338,19 @@ pub fn wasm_parse_uci_move(uci: &str) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen(js_name = moveToUci)]
-pub fn wasm_move_to_uci(game: &WasmGame, from_r: usize, from_c: usize, to: JsValue) -> Result<String, JsValue> {
+pub fn wasm_move_to_uci(
+    game: &WasmGame,
+    from_r: usize,
+    from_c: usize,
+    to: JsValue,
+) -> Result<String, JsValue> {
     let t: JsMoveTarget =
         serde_wasm_bindgen::from_value(to).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let m = Move {
-        from: Square { r: from_r, c: from_c },
+        from: Square {
+            r: from_r,
+            c: from_c,
+        },
         to: MoveTarget {
             r: t.r,
             c: t.c,
@@ -417,9 +472,7 @@ pub fn wasm_search_best_move(game: &mut WasmGame, opts: JsValue) -> Result<JsVal
         depth_reached: u32,
         nodes: f64,
     }
-    let uci = result
-        .best_move
-        .map(|m| move_to_uci(&game.inner.board, m));
+    let uci = result.best_move.map(|m| move_to_uci(&game.inner.board, m));
     to_value(&Out {
         uci,
         best_score: result.best_score,

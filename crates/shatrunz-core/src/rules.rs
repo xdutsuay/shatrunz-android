@@ -67,9 +67,7 @@ fn get_legal_moves_mut(
                 moves.push(MoveTarget::plain((ir + forward) as usize, c));
                 let start_rank: isize = if color == Color::White { 7 } else { 1 };
                 if ir == start_rank
-                    && board
-                        .get((ir + forward * 2) as usize, c)
-                        .is_none()
+                    && board.get((ir + forward * 2) as usize, c).is_none()
                     && board.get((ir + forward) as usize, c).is_none()
                 {
                     moves.push(MoveTarget::plain((ir + forward * 2) as usize, c));

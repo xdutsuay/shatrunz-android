@@ -60,6 +60,10 @@ pub struct Game {
     /// used by search, independent of `move_history`/`position_history`
     /// and never toggling `turn` (search passes color explicitly).
     ai_stack: Vec<AiHistoryEntry>,
+    /// Custom start position (`placement side`), or `None` for the standard
+    /// setup. Anything that rebuilds a game from its UCI move list (the AI
+    /// worker, saved-game restore) must start from here, not `Game::new()`.
+    pub start_fen: Option<String>,
 }
 
 impl Default for Game {
@@ -77,7 +81,55 @@ impl Game {
             move_history: Vec::new(),
             position_history: HashMap::new(),
             ai_stack: Vec::new(),
+            start_fen: None,
         }
+    }
+
+    /// The standard start as a start-position string.
+    pub const STANDARD_START: &'static str = "rnbqkbznr/ppppppppp/9/9/9/9/9/PPPPPPPPP/RNBQKBZNR w";
+
+    /// A game starting from `placement side` (FEN-like, 9 ranks from rank 9
+    /// down, `z`/`Z` = Krishna; any further FEN fields are ignored).
+    /// Validated so the rules engine never sees a broken position: exactly
+    /// one king per side, at most one Krishna per side, no pawns on the
+    /// first or last rank, and the side *not* to move isn't in check.
+    pub fn from_start_fen(fen: &str) -> Result<Game, String> {
+        let mut parts = fen.split_whitespace();
+        let placement = parts.next().ok_or("empty position")?;
+        let side = parts.next().unwrap_or("w");
+        let full = format!("{placement} {side} - - 0 1");
+        let pos = crate::fen::engine_position_from_fen(&full).map_err(|e| e.0.to_string())?;
+        let mut kings = [0; 2];
+        let mut krishnas = [0; 2];
+        for r in 0..BOARD_SIZE {
+            for c in 0..BOARD_SIZE {
+                if let Some(p) = pos.board.get(r, c) {
+                    let i = if p.color == Color::White { 0 } else { 1 };
+                    match p.kind {
+                        PieceKind::King => kings[i] += 1,
+                        PieceKind::Krishna => krishnas[i] += 1,
+                        PieceKind::Pawn if r == 0 || r == BOARD_SIZE - 1 => {
+                            return Err("pawns can't stand on the first or last rank".into())
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        if kings != [1, 1] {
+            return Err("each side needs exactly one king".into());
+        }
+        if krishnas[0] > 1 || krishnas[1] > 1 {
+            return Err("at most one Krishna per side".into());
+        }
+        if rules::is_king_in_check(&pos.board, pos.side_to_move.opposite()) {
+            return Err("the side that just moved can't be in check".into());
+        }
+        let mut g = Game::new();
+        g.board = pos.board;
+        g.turn = pos.side_to_move;
+        g.start_fen = Some(format!("{placement} {side}"));
+        Ok(g)
     }
 
     /// **FROZEN.** `"{turn}|"` + `"{color}{kind}{r}{c}"` per occupied
@@ -169,8 +221,14 @@ impl Game {
                 self.board.set(rank, rook_to_col, Some(rook));
                 self.board.set(rank, rook_from_col, None);
                 entry.castling_rook = Some(CastlingRookMove {
-                    from: Square { r: rank, c: rook_from_col },
-                    to: Square { r: rank, c: rook_to_col },
+                    from: Square {
+                        r: rank,
+                        c: rook_from_col,
+                    },
+                    to: Square {
+                        r: rank,
+                        c: rook_to_col,
+                    },
                     piece: rook,
                 });
             }
@@ -198,7 +256,8 @@ impl Game {
             }
         }
 
-        self.board.set(last.from.r, last.from.c, Some(last.moved_piece));
+        self.board
+            .set(last.from.r, last.from.c, Some(last.moved_piece));
         self.board.set(last.to.r, last.to.c, last.captured_piece);
 
         if let Some(cr) = &last.castling_rook {
@@ -249,8 +308,14 @@ impl Game {
                 self.board.set(rank, rook_to_col, Some(rook));
                 self.board.set(rank, rook_from_col, None);
                 entry.castling_rook = Some(CastlingRookMove {
-                    from: Square { r: rank, c: rook_from_col },
-                    to: Square { r: rank, c: rook_to_col },
+                    from: Square {
+                        r: rank,
+                        c: rook_from_col,
+                    },
+                    to: Square {
+                        r: rank,
+                        c: rook_to_col,
+                    },
                     piece: rook,
                 });
             }
@@ -303,13 +368,14 @@ impl Game {
         if self.move_history.len() >= 240 {
             let score = self.get_score();
             if score.abs() >= 300 {
-                let winner = if score > 0 { Color::White } else { Color::Black };
+                let winner = if score > 0 {
+                    Color::White
+                } else {
+                    Color::Black
+                };
                 return Status {
                     over: true,
-                    msg: format!(
-                        "Adjudicated: {} wins (material)",
-                        color_name(winner)
-                    ),
+                    msg: format!("Adjudicated: {} wins (material)", color_name(winner)),
                     winner: Some(winner),
                 };
             }

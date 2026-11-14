@@ -45,7 +45,10 @@ impl MoveTarget {
     }
 
     pub fn to_square(self) -> Square {
-        Square { r: self.r, c: self.c }
+        Square {
+            r: self.r,
+            c: self.c,
+        }
     }
 }
 

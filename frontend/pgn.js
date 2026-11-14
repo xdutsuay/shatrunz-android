@@ -108,7 +108,7 @@ export class PGNManager {
     }
 
     /** Persist the in-progress game separately from completed-game history. */
-    saveActiveGame(mode, uciMoves = [], { autoPlay = false } = {}) {
+    saveActiveGame(mode, uciMoves = [], { autoPlay = false, startFen = null } = {}) {
         if (!this.currentGame || !mode) return false;
         const payload = {
             schemaVersion: 1,
@@ -116,6 +116,7 @@ export class PGNManager {
             savedAt: new Date().toISOString(),
             autoPlay: Boolean(autoPlay),
             uciMoves: [...uciMoves],
+            startFen: startFen || null,
             game: JSON.parse(JSON.stringify(this.currentGame)),
         };
         try {

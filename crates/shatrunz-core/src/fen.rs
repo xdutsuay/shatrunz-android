@@ -12,8 +12,7 @@ use crate::engine_position::{EnginePosition, RIGHT_BK, RIGHT_BQ, RIGHT_WK, RIGHT
 use crate::piece::{Color, Piece, PieceKind};
 
 /// Canonical start FEN used in PGN headers / Fairy-Stockfish variant ini.
-pub const START_FEN: &str =
-    "rnbqkbznr/ppppppppp/9/9/9/9/9/PPPPPPPPP/RNBQKBZNR w - - 0 1";
+pub const START_FEN: &str = "rnbqkbznr/ppppppppp/9/9/9/9/9/PPPPPPPPP/RNBQKBZNR w - - 0 1";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FenError(pub &'static str);
@@ -125,7 +124,11 @@ pub fn engine_position_to_fen(pos: &EnginePosition) -> String {
         ranks.push(rank);
     }
 
-    let stm = if pos.side_to_move == Color::White { 'w' } else { 'b' };
+    let stm = if pos.side_to_move == Color::White {
+        'w'
+    } else {
+        'b'
+    };
     let castling = format_castling(pos.castling_rights);
     format!(
         "{} {} {} - {} {}",

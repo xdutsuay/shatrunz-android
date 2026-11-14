@@ -54,8 +54,17 @@ fn load_fixture() -> Fixture {
 #[test]
 fn parse_uci_move_matches_js_oracle() {
     for case in load_fixture().parse_cases {
-        let (from, to) = parse_uci_move(&case.uci).unwrap_or_else(|| panic!("{}: failed to parse", case.uci));
-        assert_eq!(from, Square { r: case.parsed.from.r, c: case.parsed.from.c }, "{}: from", case.uci);
+        let (from, to) =
+            parse_uci_move(&case.uci).unwrap_or_else(|| panic!("{}: failed to parse", case.uci));
+        assert_eq!(
+            from,
+            Square {
+                r: case.parsed.from.r,
+                c: case.parsed.from.c
+            },
+            "{}: from",
+            case.uci
+        );
         assert_eq!(
             to,
             MoveTarget::plain(case.parsed.to.r, case.parsed.to.c),
@@ -82,12 +91,24 @@ fn piece_kind_from_char(c: &str) -> PieceKind {
 fn move_to_uci_matches_js_oracle() {
     for case in load_fixture().move_cases {
         let mut board = Board::empty();
-        let piece = Piece { color: Color::White, kind: piece_kind_from_char(&case.piece_type) };
+        let piece = Piece {
+            color: Color::White,
+            kind: piece_kind_from_char(&case.piece_type),
+        };
         board.set(case.from.r, case.from.c, Some(piece));
         let m = Move {
-            from: Square { r: case.from.r, c: case.from.c },
+            from: Square {
+                r: case.from.r,
+                c: case.from.c,
+            },
             to: MoveTarget::plain(case.to.r, case.to.c),
         };
-        assert_eq!(move_to_uci(&board, m), case.uci, "from={:?} to={:?}", case.from, case.to);
+        assert_eq!(
+            move_to_uci(&board, m),
+            case.uci,
+            "from={:?} to={:?}",
+            case.from,
+            case.to
+        );
     }
 }

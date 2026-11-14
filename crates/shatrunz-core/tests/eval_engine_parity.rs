@@ -39,7 +39,10 @@ fn parse_uci(uci: &str) -> (Square, MoveTarget) {
     let from_rank: usize = (bytes[1] - b'0') as usize;
     let to_file = (bytes[2] - b'a') as usize;
     let to_rank: usize = (bytes[3] - b'0') as usize;
-    let from = Square { r: 9 - from_rank, c: from_file };
+    let from = Square {
+        r: 9 - from_rank,
+        c: from_file,
+    };
     let to = MoveTarget::plain(9 - to_rank, to_file);
     (from, to)
 }
@@ -51,7 +54,11 @@ fn engine_eval_matches_c_binary() {
         let mut game = Game::new();
         for uci in &case.uci_moves {
             let (from, to) = parse_uci(uci);
-            assert!(game.execute_move(from, to), "{}: replay move {uci} failed", case.label);
+            assert!(
+                game.execute_move(from, to),
+                "{}: replay move {uci} failed",
+                case.label
+            );
         }
         let score = evaluate(&game.board, game.turn);
         assert_eq!(score, case.score_cp, "{}: evaluate() mismatch", case.label);

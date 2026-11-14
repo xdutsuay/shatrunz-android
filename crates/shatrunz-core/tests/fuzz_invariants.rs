@@ -34,8 +34,14 @@ fn assert_game_invariants(game: &Game, label: &str) {
             }
         }
     }
-    assert_eq!(white_kings, 1, "{label}: expected 1 white king, got {white_kings}");
-    assert_eq!(black_kings, 1, "{label}: expected 1 black king, got {black_kings}");
+    assert_eq!(
+        white_kings, 1,
+        "{label}: expected 1 white king, got {white_kings}"
+    );
+    assert_eq!(
+        black_kings, 1,
+        "{label}: expected 1 black king, got {black_kings}"
+    );
 }
 
 #[test]
@@ -49,7 +55,10 @@ fn fuzz_core_rules_invariants_hold_under_random_play_and_undo() {
                 .unwrap()
                 .as_millis() as u32
         });
-    let fuzz_ms: u64 = std::env::var("FUZZ_MS").ok().and_then(|s| s.parse().ok()).unwrap_or(3_000);
+    let fuzz_ms: u64 = std::env::var("FUZZ_MS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3_000);
 
     let mut rng = Mulberry32::new(seed);
     let deadline = Instant::now() + Duration::from_millis(fuzz_ms);
@@ -65,7 +74,10 @@ fn fuzz_core_rules_invariants_hold_under_random_play_and_undo() {
 
         if legal.is_empty() {
             let status = game.check_status();
-            assert!(status.over, "expected game over when no legal moves (seed={seed})");
+            assert!(
+                status.over,
+                "expected game over when no legal moves (seed={seed})"
+            );
             game = Game::new();
             hash_stack.clear();
             plies = 0;
@@ -89,7 +101,10 @@ fn fuzz_core_rules_invariants_hold_under_random_play_and_undo() {
             while i < undo_count && !hash_stack.is_empty() {
                 let expected = hash_stack.pop().unwrap();
                 let ok = game.undo_last_move();
-                assert!(ok, "undo_last_move returned false unexpectedly (seed={seed})");
+                assert!(
+                    ok,
+                    "undo_last_move returned false unexpectedly (seed={seed})"
+                );
                 assert_game_invariants(&game, &format!("after undo seed={seed}"));
                 let cur = game.position_key();
                 assert_eq!(cur, expected, "hash mismatch after undo (seed={seed})");

@@ -110,6 +110,10 @@ fn engine_perft_seeded_positions_match_c_binary() {
             apply_uci(&mut pos, uci);
         }
         let nodes = perft(&mut pos, case.depth);
-        assert_eq!(nodes, case.nodes, "seed {}: perft(depth={}) mismatch", case.seed, case.depth);
+        assert_eq!(
+            nodes, case.nodes,
+            "seed {}: perft(depth={}) mismatch",
+            case.seed, case.depth
+        );
     }
 }

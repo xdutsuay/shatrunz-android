@@ -48,8 +48,14 @@ fn apply_uci(pos: &mut EnginePosition, uci: &str) {
     use shatrunz_core::piece::PieceKind;
 
     let bytes = uci.as_bytes();
-    let from = ESquare { r: 9 - (bytes[1] - b'0') as usize, c: (bytes[0] - b'a') as usize };
-    let to = ESquare { r: 9 - (bytes[3] - b'0') as usize, c: (bytes[2] - b'a') as usize };
+    let from = ESquare {
+        r: 9 - (bytes[1] - b'0') as usize,
+        c: (bytes[0] - b'a') as usize,
+    };
+    let to = ESquare {
+        r: 9 - (bytes[3] - b'0') as usize,
+        c: (bytes[2] - b'a') as usize,
+    };
     let promo = if bytes.len() > 4 {
         Some(match bytes[4] {
             b'r' => PieceKind::Rook,
@@ -98,9 +104,14 @@ fn engine_search_bestmove_matches_c_binary() {
         for (key, expected) in &case.bestmoves {
             let depth: i32 = key.strip_prefix("depth").unwrap().parse().unwrap();
             let mut pos_copy = pos.clone();
-            let mv = search(&mut pos_copy, depth, 0).unwrap_or_else(|| panic!("{}: no move found", case.label));
+            let mv = search(&mut pos_copy, depth, 0)
+                .unwrap_or_else(|| panic!("{}: no move found", case.label));
             let got = move_to_uci(&mv);
-            assert_eq!(&got, expected, "{} depth{depth}: bestmove mismatch", case.label);
+            assert_eq!(
+                &got, expected,
+                "{} depth{depth}: bestmove mismatch",
+                case.label
+            );
         }
     }
 }
@@ -121,7 +132,9 @@ fn engine_search_returns_legal_move_at_deeper_depths() {
             let mv = search(&mut pos_copy, depth, 0)
                 .unwrap_or_else(|| panic!("{} depth{depth}: no move found", case.label));
             assert!(
-                legal.iter().any(|m| m.from == mv.from && m.to == mv.to && m.promotion_type == mv.promotion_type),
+                legal.iter().any(|m| m.from == mv.from
+                    && m.to == mv.to
+                    && m.promotion_type == mv.promotion_type),
                 "{} depth{depth}: search returned an illegal move {:?}",
                 case.label,
                 mv

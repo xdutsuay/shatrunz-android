@@ -14,7 +14,7 @@ use shatrunz_core::eval::hce::Persona;
 use shatrunz_core::game::Game;
 use shatrunz_core::moves::{Move, MoveTarget, Square};
 use shatrunz_core::piece::PieceKind;
-use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchConfig, SearchMode};
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
@@ -64,7 +64,10 @@ fn parse_uci(uci: &str) -> (Square, MoveTarget) {
     let from_rank: usize = (bytes[1] - b'0') as usize;
     let to_file = (bytes[2] - b'a') as usize;
     let to_rank: usize = (bytes[3] - b'0') as usize;
-    let from = Square { r: 9 - from_rank, c: from_file };
+    let from = Square {
+        r: 9 - from_rank,
+        c: from_file,
+    };
     let to = MoveTarget::plain(9 - to_rank, to_file);
     (from, to)
 }
@@ -78,11 +81,12 @@ fn move_to_uci(game: &Game, m: Move) -> String {
     let from_rank = 9 - m.from.r;
     let to_rank = 9 - m.to.r;
     let moved = game.board.get(m.from.r, m.from.c);
-    let promo = if matches!(moved, Some(p) if p.kind == PieceKind::Pawn) && (m.to.r == 0 || m.to.r == 8) {
-        "q"
-    } else {
-        ""
-    };
+    let promo =
+        if matches!(moved, Some(p) if p.kind == PieceKind::Pawn) && (m.to.r == 0 || m.to.r == 8) {
+            "q"
+        } else {
+            ""
+        };
     format!("{from_file}{from_rank}{to_file}{to_rank}{promo}")
 }
 
@@ -93,7 +97,11 @@ fn persona_search_matches_js_oracle() {
         let mut game = Game::new();
         for uci in &case.uci_moves {
             let (from, to) = parse_uci(uci);
-            assert!(game.execute_move(from, to), "{}: replay move {uci} failed", case.label);
+            assert!(
+                game.execute_move(from, to),
+                "{}: replay move {uci} failed",
+                case.label
+            );
         }
 
         for (persona, results) in [
@@ -113,9 +121,15 @@ fn persona_search_matches_js_oracle() {
                 let result = get_best_move(&mut game, turn, base_depth, &cfg, &|_m| 0.0);
 
                 let ctx = format!("{} {:?} depth{}", case.label, persona, base_depth);
-                assert_eq!(result.depth_reached, expected.depth_reached, "{ctx}: depth_reached");
+                assert_eq!(
+                    result.depth_reached, expected.depth_reached,
+                    "{ctx}: depth_reached"
+                );
                 assert_eq!(result.best_score, expected.best_score, "{ctx}: best_score");
-                assert_eq!(result.second_score, expected.second_score, "{ctx}: second_score");
+                assert_eq!(
+                    result.second_score, expected.second_score,
+                    "{ctx}: second_score"
+                );
                 match (result.best_move, &expected.uci) {
                     (Some(m), Some(expected_uci)) => {
                         assert_eq!(&move_to_uci(&game, m), expected_uci, "{ctx}: best_move uci");

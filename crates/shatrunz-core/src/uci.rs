@@ -31,7 +31,10 @@ pub fn parse_uci_move(uci: &str) -> Option<(Square, MoveTarget)> {
     }
 
     Some((
-        Square { r: from_rank as usize, c: from_file },
+        Square {
+            r: from_rank as usize,
+            c: from_file,
+        },
         MoveTarget::plain(to_rank as usize, to_file),
     ))
 }
@@ -46,11 +49,12 @@ pub fn move_to_uci(board: &Board, m: Move) -> String {
     let from_rank = 9 - m.from.r;
     let to_rank = 9 - m.to.r;
     let moved = board.get(m.from.r, m.from.c);
-    let promo = if matches!(moved, Some(p) if p.kind == PieceKind::Pawn) && (m.to.r == 0 || m.to.r == 8) {
-        "q"
-    } else {
-        ""
-    };
+    let promo =
+        if matches!(moved, Some(p) if p.kind == PieceKind::Pawn) && (m.to.r == 0 || m.to.r == 8) {
+            "q"
+        } else {
+            ""
+        };
     format!("{from_file}{from_rank}{to_file}{to_rank}{promo}")
 }
 

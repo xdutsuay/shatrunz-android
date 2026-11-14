@@ -8,7 +8,7 @@
 use shatrunz_core::board::Board;
 use shatrunz_core::game::Game;
 use shatrunz_core::piece::{Color, Piece, PieceKind};
-use shatrunz_core::search::persona::{get_best_move, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
 use shatrunz_core::eval::hce::Persona;
 
 fn game_with(pieces: &[(usize, usize, Color, PieceKind)], turn: Color) -> Game {
@@ -22,7 +22,7 @@ fn game_with(pieces: &[(usize, usize, Color, PieceKind)], turn: Color) -> Game {
 }
 
 fn plays_mate(mut g: Game, depth: u32) {
-    let cfg = SearchConfig { persona: Persona::Material, add_randomness: false, deadline: None };
+    let cfg = SearchConfig { persona: Persona::Material, mode: SearchMode::Full, add_randomness: false, deadline: None };
     let res = get_best_move(&mut g, Color::White, depth, &cfg, &|_| 0.0);
     let m = res.best_move.expect("a move");
     assert!(g.execute_move(m.from, m.to), "move must be legal");

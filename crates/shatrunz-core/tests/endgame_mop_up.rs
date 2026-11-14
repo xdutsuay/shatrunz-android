@@ -11,7 +11,7 @@ use shatrunz_core::moves::Move;
 use shatrunz_core::eval::hce::Persona;
 use shatrunz_core::game::Game;
 use shatrunz_core::piece::{Color, Piece, PieceKind};
-use shatrunz_core::search::persona::{get_best_move, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
 
 fn game_with(pieces: &[(usize, usize, Color, PieceKind)]) -> Game {
     let mut g = Game::new();
@@ -30,7 +30,7 @@ fn game_with(pieces: &[(usize, usize, Color, PieceKind)]) -> Game {
 /// occurrence for the side that is ahead), so this exercises the search
 /// the way the app actually calls it.
 fn self_play_until_mate(mut g: Game, depth: u32, max_plies: usize) -> usize {
-    let cfg = SearchConfig { persona: Persona::Material, add_randomness: false, deadline: None };
+    let cfg = SearchConfig { persona: Persona::Material, mode: SearchMode::Full, add_randomness: false, deadline: None };
     let mut seen: HashMap<String, u32> = HashMap::new();
     seen.insert(g.position_key(), 1);
     for ply in 0..max_plies {

@@ -20,7 +20,7 @@ use shatrunz_core::moves::{CastlingSide, Move, MoveTarget, Square};
 use shatrunz_core::phase::{get_phase_for_game, Phase};
 use shatrunz_core::piece::Color;
 use shatrunz_core::rules;
-use shatrunz_core::search::persona::{get_best_move, SearchConfig};
+use shatrunz_core::search::persona::{get_best_move, SearchMode, SearchConfig};
 use shatrunz_core::uci::{legal_uci_moves, move_to_uci, parse_uci_move};
 
 #[wasm_bindgen]
@@ -398,6 +398,7 @@ pub fn wasm_search_best_move(game: &mut WasmGame, opts: JsValue) -> Result<JsVal
         .map(|ms| Instant::now() + Duration::from_millis(ms as u64));
     let cfg = SearchConfig {
         persona,
+        mode: SearchMode::Full,
         add_randomness: false,
         deadline,
     };

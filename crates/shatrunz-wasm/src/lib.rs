@@ -2,7 +2,9 @@
 //! See docs/plans/PLAN_03_rust_port.md "WASM boundary".
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+use web_time::Instant;
 
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;

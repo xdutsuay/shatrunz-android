@@ -1,0 +1,77 @@
+# CI: run the same checks every PR in the AI vs AI stack was verified with.
+#
+#   rust     - cargo test for the rules/search core (incl. parity fixtures)
+#   web      - build the wasm twice (browser + Node), npm test, browser e2e
+#   android  - assemble the debug APK (also rebuilds wasm via Gradle)
+#
+# Runs on pull requests targeting ANY branch, so stacked PRs get checked too.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # rust-toolchain.toml pins the version + wasm32 target; rustup on the
+      # runner installs it on first cargo call.
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p shatrunz-core --release
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - name: Build wasm (browser + Node)
+        run: |
+          wasm-pack build crates/shatrunz-wasm --target web --release --no-opt --out-dir ../../frontend/pkg
+          wasm-pack build crates/shatrunz-wasm --target nodejs --release --no-opt --out-dir ../../frontend/pkg-node
+      - run: npm test
+      - name: Browser e2e (full AI vs AI game)
+        run: npm run test:e2e
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      # The runner image ships the Android SDK (ANDROID_HOME is set).
+      - run: ./gradlew :app:assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7

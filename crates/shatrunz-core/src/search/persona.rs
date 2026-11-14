@@ -102,12 +102,24 @@ pub fn mop_up(board: &Board, turn: Color) -> f64 {
     }
 }
 
+thread_local! {
+    /// Nodes visited by the current `get_best_move` call (alphabeta +
+    /// quiescence entries). Only a statistic for benchmarking; it never
+    /// influences the search.
+    static NODES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+fn count_node() {
+    NODES.with(|n| n.set(n.get() + 1));
+}
+
 fn deadline_passed(cfg: &SearchConfig) -> bool {
     matches!(cfg.deadline, Some(dl) if Instant::now() >= dl)
 }
 
 /// Mirrors `quiescence` (ai.js:121-143).
 fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig, q_depth: i32) -> f64 {
+    count_node();
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
     }
@@ -150,6 +162,7 @@ fn quiescence(game: &mut Game, mut alpha: f64, beta: f64, color: Color, cfg: &Se
 /// AI could not tell checkmate from any other position and never mated a
 /// lone king. The JS search is now only a no-wasm fallback.
 fn alphabeta(game: &mut Game, depth: i32, mut alpha: f64, beta: f64, color: Color, cfg: &SearchConfig) -> f64 {
+    count_node();
     if deadline_passed(cfg) {
         return evaluate_with_randomness(&game.board, color, cfg);
     }
@@ -264,6 +277,8 @@ pub struct SearchResult {
     pub best_score: f64,
     pub second_score: f64,
     pub depth_reached: u32,
+    /// Search nodes visited (for nodes/sec benchmarks only).
+    pub nodes: u64,
 }
 
 /// Mirrors `AIPlayer.getBestMove` (ai.js:213-339), minus the brain
@@ -279,6 +294,7 @@ pub fn get_best_move(
     cfg: &SearchConfig,
     root_bonus: &dyn Fn(Move) -> f64,
 ) -> SearchResult {
+    NODES.with(|n| n.set(0));
     let moves = game.legal_moves(color);
     if moves.is_empty() {
         return SearchResult {
@@ -286,6 +302,7 @@ pub fn get_best_move(
             best_score: f64::NEG_INFINITY,
             second_score: f64::NEG_INFINITY,
             depth_reached: 0,
+            nodes: 0,
         };
     }
 
@@ -321,6 +338,13 @@ pub fn get_best_move(
                 break;
             }
         }
+        if best_move.is_none() {
+            // The budget ran out before even depth 1 finished (a tiny budget
+            // or a stalled thread). A legal move beats no move: returning
+            // None would make the caller treat the game as stuck.
+            best_move = Some(order[0]);
+            best_score = evaluate_with_randomness(&game.board, color, cfg);
+        }
     } else if let Some(r) = search_one_depth(game, &moves, max_depth, color, cfg, root_bonus) {
         best_move = Some(r.best_move);
         best_score = r.best_score;
@@ -339,5 +363,6 @@ pub fn get_best_move(
         best_score,
         second_score,
         depth_reached,
+        nodes: NODES.with(|n| n.get()),
     }
 }

@@ -90,3 +90,6 @@ android/app/src/main/assets/www/
 /scripts/train_one.sh
 /scripts/watch_tests.py
 
+
+# npm
+node_modules/

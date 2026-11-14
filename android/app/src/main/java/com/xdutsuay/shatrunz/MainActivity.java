@@ -199,6 +199,27 @@ public final class MainActivity extends Activity {
     }
 
     private final class AndroidShareBridge {
+        /** #32: share an animated GIF (base64) through the share sheet. */
+        @JavascriptInterface
+        public void shareGif(String filename, String base64) {
+            if (base64 == null || base64.length() > 8_500_000) return;
+            final byte[] bytes;
+            try {
+                bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+            } catch (IllegalArgumentException e) {
+                return;
+            }
+            final java.io.File file = GifShareProvider.writeShared(MainActivity.this, bytes);
+            if (file == null) return;
+            runOnUiThread(() -> {
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("image/gif");
+                send.putExtra(Intent.EXTRA_STREAM, GifShareProvider.uriFor(MainActivity.this, file));
+                send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(send, getString(R.string.share_game)));
+            });
+        }
+
         @JavascriptInterface
         public void shareText(String filename, String text) {
             if (text == null || text.length() > 250_000) return;

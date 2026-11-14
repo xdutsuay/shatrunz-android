@@ -4,7 +4,9 @@ import { capturedSummary } from './shared/captured.js';
 import { Rules } from './rules.js';
 import { AIPlayer } from './ai.js';
 import { PGNManager } from './pgn.js';
-import { MODES, isAiTurn as isAiTurnFor, shouldDeferLevelChange } from './mode_logic.js';
+import { MODES, getAiColor, isAiTurn as isAiTurnFor, shouldDeferLevelChange } from './mode_logic.js';
+import { DrawerKeys, drawerToggle } from './shared/settings_drawer.js';
+import { moveFeedback } from './shared/move_feedback.js';
 import { GameSession } from './shared/game_session.js';
 import { BoardView } from './shared/board_view.js';
 import { brainNameFor } from './shared/brain_utils.js';
@@ -157,7 +159,16 @@ const boardView = new BoardView({
     boardEl,
     getGame,
     getSelection: () => ({ selectedSq, legalMoves }),
-    isFlipped: () => boardFlipped,
+    // #34 "Flip Board: Auto": in PvP, show the side to move at the bottom.
+    isFlipped: () => (currentMode === MODES.HVH && drawerToggle(DrawerKeys.autoSwapSides)
+        ? getGame().turn === COLORS.BLACK
+        : boardFlipped),
+    onNewMove: (mv) => {
+        const mover = mv?.movedPiece?.color ?? (getGame().turn === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE);
+        const byEngine = currentMode === MODES.CVC
+            || (currentMode === MODES.HVC && mover === getAiColor(document.getElementById('computer-side')?.value || 'black'));
+        moveFeedback(byEngine);
+    },
     onSquareClick: (r, c) => {
         if (reviewState) return;
         if (modeController.onSquareClick(r, c)) return;
@@ -329,6 +340,7 @@ async function refreshMlMetrics() {
 export function initUI(initialMode = MODES.HVH) {
     // Read-only hook for the settings drawer's "Copy current position".
     window.__shatrunzGame = () => getGame();
+    window.addEventListener('shatrunz:settings', () => boardView.render());
     setClockProvider(() => ({
         clock,
         incrementMs: getClockSettings().incrementMs,

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- #34: "Vibrate on engine move" (navigator.vibrate in the WebView). Normal permission, no prompt. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

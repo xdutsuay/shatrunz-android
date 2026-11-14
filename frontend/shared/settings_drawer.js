@@ -5,7 +5,7 @@
  * existing controls (so their handlers, hints and persistence still run);
  * new toggles are plain localStorage keys read where they apply.
  */
-import { SettingsKeys, getSettings, setNum } from './settings_store.js';
+import { SettingsKeys, getSettings, setNum, setSideEngine, sideEngineSettings } from './settings_store.js';
 import { idForStartFen, randomShatrunz960Id, startFenFor } from './shatrunz960.js';
 import { STANDARD_START, boardToStartFen, getStartFen, setStartFen, validateStartFen } from './start_position.js';
 
@@ -45,6 +45,20 @@ export function initSettingsDrawer() {
     const theme = document.getElementById('drawer-theme');
 
     think.innerHTML = THINK_TIMES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+
+    // #33: per-side overrides; value "" = same as global.
+    for (const side of ['w', 'b']) {
+        const lv = document.getElementById(`drawer-${side}-level`);
+        const th = document.getElementById(`drawer-${side}-think`);
+        if (!lv || !th) continue;
+        lv.innerHTML = '<option value="">Same</option>' + [1, 2, 3, 4, 5, 6].map((n) => `<option value="${n}">${n}</option>`).join('');
+        th.innerHTML = '<option value="">Same</option>' + THINK_TIMES.filter(([v]) => v > 0).map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+        const cur = sideEngineSettings(side);
+        lv.value = cur.level ? String(cur.level) : '';
+        th.value = cur.thinkTimeMs && THINK_TIMES.some(([v]) => v === cur.thinkTimeMs) ? String(cur.thinkTimeMs) : '';
+        lv.addEventListener('change', () => setSideEngine(side, 'level', Number(lv.value) || 0));
+        th.addEventListener('change', () => setSideEngine(side, 'thinkTimeMs', Number(th.value) || 0));
+    }
 
     const sync = () => {
         const pageLevel = document.getElementById('ai-level')?.value || getSettings().aiLevel || 3;

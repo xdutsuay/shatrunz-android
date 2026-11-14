@@ -1,7 +1,7 @@
 import { COLORS } from '../constants.js';
 import { BackendAPI } from '../api.js';
 import { parseUCIMove } from './uci.js';
-import { getSettings } from './settings_store.js';
+import { getSettings, sideEngineSettings } from './settings_store.js';
 import { computeGoTimeMs, clockFieldsForSide } from './clock_budget.js';
 import {
     ENGINE_PERSONAS,
@@ -11,6 +11,19 @@ import {
 } from './persona.js';
 
 let clockProvider = null;
+
+/** #33: apply this side's strength override (if any) to its AI, then return the level. */
+export function applySideLevel(ai, turn) {
+    const lv = sideEngineSettings(turn).level;
+    if (lv && ai?.level !== lv) ai.setLevel?.(lv);
+    return ai?.level;
+}
+
+/** "1 s" / "250 ms": the think time this side will use (no clocks). */
+export function sideThinkLabel(turn, level) {
+    const ms = jsBudgetMs(turn, level);
+    return ms >= 1000 ? `${+(ms / 1000).toFixed(1)} s` : `${ms} ms`;
+}
 
 export function setClockProvider(fn) {
     clockProvider = fn;
@@ -69,6 +82,9 @@ function clockSearchOpts(turn) {
 export function jsBudgetMs(turn, level) {
     const s = getSettings();
     if (!s.enableClocks || !clockProvider) {
+        // #33: a per-side think time beats the global one; clocks beat both.
+        const side = sideEngineSettings(turn);
+        if (side.thinkTimeMs) return side.thinkTimeMs;
         return s.thinkTimeMs > 0 ? s.thinkTimeMs : thinkTimeMsForLevel(level ?? s.aiLevel);
     }
     const { clock, incrementMs } = clockProvider();
@@ -141,6 +157,7 @@ export async function getPvaiEngineMove({ game, uciMoveHistory, currentAI, perso
             console.error('Engine request failed:', error);
         }
     }
+    applySideLevel(currentAI, game.turn);
     return currentAI.getBestMove(game, game.turn, false, {
         uciPrefix: uciMoveHistory,
         budgetMs: jsBudgetMs(game.turn, currentAI.level),
@@ -161,6 +178,7 @@ export async function getMoveForTurn({
     }
 
     const aiToUse = turn === COLORS.WHITE ? ai1 : ai2;
+    applySideLevel(aiToUse, turn);
     return aiToUse.getBestMove(game, game.turn, false, {
         uciPrefix: uciMoveHistory,
         budgetMs: jsBudgetMs(turn, aiToUse.level),

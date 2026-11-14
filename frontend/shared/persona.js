@@ -108,11 +108,12 @@ export function personaLabel(personaName) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function engineStatusLabel({ personaId, level, depth }) {
+export function engineStatusLabel({ personaId, level, depth, think = '' }) {
     const p = ENGINE_PERSONAS.find((x) => x.id === personaId) || ENGINE_PERSONAS[0];
     const d = depth ?? depthForLevel(level);
-    if (p.kind === 'c') return `Engine: C native (depth ${d})`;
-    return `Engine: ${p.label} (depth ${d})`;
+    const t = think ? `, ${think}/move` : '';
+    if (p.kind === 'c') return `Engine: C native (depth ${d}${t})`;
+    return `Engine: ${p.label} (L${level ?? '?'}, depth ${d}${t})`;
 }
 
 export const HYPER_STRATEGIES = ['material', 'positional', 'aggressive'];

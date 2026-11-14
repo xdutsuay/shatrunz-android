@@ -37,6 +37,30 @@ export const SettingsKeys = {
     thinkTimeMs: 'shatrunz_think_time_ms',
 };
 
+/**
+ * #33: per-side engine overrides ("time odds"). Empty = use the global
+ * strength / think time. Keyed by colour, so they apply to whichever side
+ * an engine plays: both in AI vs AI, the computer's side in PvAI.
+ */
+export const SideEngineKeys = {
+    w: { level: 'shatrunz_ai_level_w', thinkTimeMs: 'shatrunz_think_time_ms_w' },
+    b: { level: 'shatrunz_ai_level_b', thinkTimeMs: 'shatrunz_think_time_ms_b' },
+};
+
+/** @returns {{level: number|null, thinkTimeMs: number|null}} */
+export function sideEngineSettings(turn) {
+    const k = SideEngineKeys[turn === 'b' ? 'b' : 'w'];
+    const level = num(k.level, 0);
+    const think = num(k.thinkTimeMs, 0);
+    return { level: level >= 1 && level <= 6 ? level : null, thinkTimeMs: think > 0 ? think : null };
+}
+
+export function setSideEngine(turn, field, value) {
+    const key = SideEngineKeys[turn === 'b' ? 'b' : 'w'][field];
+    if (!value) ls.removeItem(key);
+    else ls.setItem(key, String(value));
+}
+
 export const ENGINE_PERSONAS = [
     { id: 'material', label: 'JS Material' },
     { id: 'positional', label: 'JS Positional' },

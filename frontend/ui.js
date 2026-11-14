@@ -13,8 +13,8 @@ import {
     engineStatusLabel,
     depthForLevel,
 } from './shared/persona.js';
-import { getSettings } from './shared/settings_store.js';
-import { getEnginePersonaForSide, setClockProvider } from './shared/engine_move.js';
+import { getSettings, sideEngineSettings } from './shared/settings_store.js';
+import { getEnginePersonaForSide, setClockProvider, sideThinkLabel } from './shared/engine_move.js';
 import { evaluatePositionWhite, evaluateGameOverDisplay } from './shared/eval_core.js';
 import { strategyForPersona } from './shared/engine_move.js';
 import { replayGameFromUci } from './shared/replay.js';
@@ -708,10 +708,13 @@ function updateStatus() {
         const pid = currentMode === MODES.HVC
             ? getEnginePersonaForSide('solo')
             : getEnginePersonaForSide(game.turn === COLORS.WHITE ? 'white' : 'black');
+        // #33: show the side-to-move's own strength and think time.
+        const lv = sideEngineSettings(game.turn).level || aiLevel();
         engineEl.textContent = engineStatusLabel({
             personaId: pid,
-            level: aiLevel(),
-            depth: depthForLevel(aiLevel()),
+            level: lv,
+            depth: depthForLevel(lv),
+            think: sideThinkLabel(game.turn, lv),
         });
     }
     const evalBar = document.getElementById('eval-bar');
